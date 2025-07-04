@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { FaOpencart, FaRegUser, FaUser, FaSearchengin } from "react-icons/fa6";
+import { FaOpencart, FaRegUser, FaSearchengin } from "react-icons/fa6";
 
 
 
@@ -35,12 +35,12 @@ export default function Header() {
                     <nav className=" ">
                         <ul className="flex gap-5">
                             <li className="">
-                                <Link href="" className=""><FaOpencart />
+                                <Link href="" className=""><FaOpencart className="text-29235c-500 text-2xl"/>
 Cart
                                 </Link>
                             </li>
                             <li className="">
-                                <Link href="" className="">Profile <FaRegUser /> <FaUser />
+                                <Link href="" className="">Profile <FaRegUser className="text-brand2-900 text-2xl hover:"/>
 
 
                                 </Link>

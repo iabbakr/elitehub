@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { FaXTwitter, FaInstagram, FaWhatsapp, FaTiktok, FaFacebookF } from "react-icons/fa6";
+import { FaXTwitter, FaLocationDot, FaPhone, FaInstagram, FaWhatsapp, FaTiktok, FaFacebookF } from "react-icons/fa6";
+import { FaSearch } from "react-icons/fa";
+import { CgMail } from "react-icons/cg";
+import { BiLogoGmail } from "react-icons/bi";
+
+
+
 
 export default function Footer() {
     return (
@@ -9,16 +15,24 @@ export default function Footer() {
                 <div className=" border justify-start">
                     <Link href="">
                         <FaXTwitter />
+                        <FaLocationDot />
+
                     </Link>
                     <Link href="">
                         <FaInstagram />
+                        <FaPhone />
+
 
                     </Link>
                     <Link href="">
                         <FaWhatsapp />
+                        <CgMail />
+
                     </Link>
                     <Link href="">
                         <FaTiktok />
+                        <BiLogoGmail />
+
                     </Link>
                     <Link href="">
                         <FaFacebookF />
@@ -27,13 +41,13 @@ export default function Footer() {
                 </div>
                 <div className="border">
                     <p>twitter</p>
-                    <p>facebook</p>
+                    <p>facebook <FaSearch /></p>
                     <p>whatsapp</p>
+                    
                 </div>
                 <div className="border ">
-                    <p>twitter</p>
-                    <p>facebook</p>
-                    <p>whatsapp</p>
+                    <p>Warrant/Return Policy</p>
+                    <p>Terms and condition</p>
                 </div>
             </div>
             <div className="">
