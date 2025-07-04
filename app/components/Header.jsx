@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { FaOpencart, FaRegUser, FaUser, FaSearchengin } from "react-icons/fa6";
+
 
 
 export default function Header() {
@@ -26,18 +28,21 @@ export default function Header() {
                     className="border rounded-l-full border-r-0"
                     />
                     <span className="border rounded-r-full b">
-                        <h1>ICON</h1>
+                        <span><FaSearchengin /></span>
                     </span>
                 </div>
                 <div className=" self-center">
                     <nav className=" ">
                         <ul className="flex gap-5">
                             <li className="">
-                                <Link href="" className="">Cart
+                                <Link href="" className=""><FaOpencart />
+Cart
                                 </Link>
                             </li>
                             <li className="">
-                                <Link href="" className="">Profile
+                                <Link href="" className="">Profile <FaRegUser /> <FaUser />
+
+
                                 </Link>
                             </li>
                         </ul>
