@@ -7,7 +7,7 @@ import { FaOpencart, FaRegUser, FaSearchengin } from "react-icons/fa6";
 export default function Header() {
     return (
         <header className="">
-            <div className="flex justify-between border m-3">
+            <div className="flex justify-between m-3 md:flex">
                 <div className="">
                     <Link href="/home">
                         <Image 
@@ -19,16 +19,16 @@ export default function Header() {
                     />
                     </Link>
                 </div>
-                <div className="self-center flex">
+                <div className="self-center flex hidden md:flex">
                     <input 
                     type="search" 
                     aria-label="search-box"
                     name="search"
                     placeholder="what are you looking for?"
-                    className="border rounded-l-full border-r-0"
+                    className="border rounded-l-full border-r-0 pl-5 h-10"
                     />
-                    <span className="border rounded-r-full b">
-                        <span><FaSearchengin /></span>
+                    <span className="border rounded-r-full ">
+                        <span><FaSearchengin className="text-2xl "/></span>
                     </span>
                 </div>
                 <div className=" self-center">
@@ -36,11 +36,10 @@ export default function Header() {
                         <ul className="flex gap-5">
                             <li className="">
                                 <Link href="" className=""><FaOpencart className="text-29235c-500 text-2xl"/>
-Cart
                                 </Link>
                             </li>
                             <li className="">
-                                <Link href="" className="">Profile <FaRegUser className="text-brand2-900 text-2xl hover:"/>
+                                <Link href="" className=""><FaRegUser className="text-[#e7302a]-900 text-2xl hover:"/>
 
 
                                 </Link>

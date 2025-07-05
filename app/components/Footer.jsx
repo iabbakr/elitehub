@@ -10,47 +10,49 @@ import { BiLogoGmail } from "react-icons/bi";
 export default function Footer() {
     return (
         <footer className="border text-center flex flex-col gap-10">
-            <div className="flex justify-between">
+            <div className="flex justify-between flex-col md:flex-row">
 
-                <div className=" border justify-start">
+                <div className=" border ">
                     <Link href="">
-                        <FaXTwitter />
-                        <FaLocationDot />
+                        <FaXTwitter className="text-2xl"/>
+                        <FaLocationDot className="text-2xl"/>
 
                     </Link>
                     <Link href="">
-                        <FaInstagram />
-                        <FaPhone />
+                        <FaInstagram className="text-2xl"/>
+                        
 
 
                     </Link>
                     <Link href="">
-                        <FaWhatsapp />
-                        <CgMail />
+                        
+                        <CgMail className="text-2xl"/>
 
                     </Link>
                     <Link href="">
-                        <FaTiktok />
-                        <BiLogoGmail />
+                        <FaTiktok className="text-2xl"/>
+                        <BiLogoGmail className="text-2xl"/>
 
                     </Link>
                     <Link href="">
-                        <FaFacebookF />
+                        <FaFacebookF className="text-2xl"/>
                     </Link>
                     
                 </div>
                 <div className="border">
                     <p>twitter</p>
-                    <p>facebook <FaSearch /></p>
+                    <p>facebook </p>
                     <p>whatsapp</p>
                     
                 </div>
-                <div className="border ">
+                <div className="border te">
                     <p>Warrant/Return Policy</p>
                     <p>Terms and condition</p>
+                    <FaPhone className="text-2xl"/>
+                    <FaWhatsapp className="text-2xl"/>
                 </div>
             </div>
-            <div className="">
+            <div className="bg---brand2">
                 <p>&copy; {new Date().getFullYear()} Elitehub. All rights reserved.</p>
 
             </div>
