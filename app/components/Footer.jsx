@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { FaXTwitter, FaLocationDot, FaPhone, FaInstagram, FaWhatsapp, FaTiktok, FaFacebookF } from "react-icons/fa6";
-import { FaSearch } from "react-icons/fa";
 import { CgMail } from "react-icons/cg";
 import { BiLogoGmail } from "react-icons/bi";
 
@@ -8,9 +7,11 @@ import { BiLogoGmail } from "react-icons/bi";
 
 
 export default function Footer() {
+
+
     return (
         <footer className="border text-center flex flex-col gap-10">
-            <div className="flex justify-between flex-col md:flex-row">
+            <div className="flex justify-between flex-col md:flex-row mx-15">
 
                 <div className=" border ">
                     <Link href="">
@@ -52,7 +53,7 @@ export default function Footer() {
                     <FaWhatsapp className="text-2xl"/>
                 </div>
             </div>
-            <div className="bg---brand2">
+            <div className="bg-brand2 text-brand1">
                 <p>&copy; {new Date().getFullYear()} Elitehub. All rights reserved.</p>
 
             </div>

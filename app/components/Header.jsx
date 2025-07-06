@@ -19,16 +19,16 @@ export default function Header() {
                     />
                     </Link>
                 </div>
-                <div className="self-center flex hidden md:flex">
+                <div className="self-center flex hidden md:flex w-130">
                     <input 
                     type="search" 
                     aria-label="search-box"
                     name="search"
                     placeholder="what are you looking for?"
-                    className="border rounded-l-full border-r-0 pl-5 h-10"
+                    className="border rounded-l-full border-r-0 pl-5 h-10 w-full"
                     />
-                    <span className="border rounded-r-full ">
-                        <span><FaSearchengin className="text-2xl "/></span>
+                    <span className="border rounded-r-full w-20 ">
+                        <span><FaSearchengin className="text-4xl pl-3 "/></span>
                     </span>
                 </div>
                 <div className=" self-center">
