@@ -14,7 +14,7 @@ export default [
     {
         key: 3,
         emoji:"🕹️",
-        name: "Gaming Consoles"
+        name: "Gaming"
 
     },
     {
@@ -51,6 +51,18 @@ export default [
         key: 9,
         emoji:"🏡",
         name: "Real Estate"
+
+    },
+    {
+        key: 10,
+        emoji:"📡",
+        name: "Starlink / Router"
+
+    },
+    {
+        key: 11,
+        emoji:"📦",
+        name: "Logistics"
 
     }
 ]

@@ -10,12 +10,15 @@ export default function Footer() {
 
 
     return (
-        <footer className="border text-center flex flex-col gap-10">
-            <div className="flex justify-between flex-col md:flex-row mx-15">
+        <footer className="text-center flex flex-col gap-10 bg-[grey]">
+            <div className="flex justify-between gap-5 flex-col md:flex-row mx-15 mt-5 ">
 
-                <div className=" border ">
+                <div className=" flex gap-5 justify-center">
                     <Link href="">
                         <FaXTwitter className="text-2xl"/>
+
+                    </Link>
+                    <Link href="">
                         <FaLocationDot className="text-2xl"/>
 
                     </Link>
@@ -32,6 +35,10 @@ export default function Footer() {
                     </Link>
                     <Link href="">
                         <FaTiktok className="text-2xl"/>
+                        
+
+                    </Link>
+                    <Link href="">
                         <BiLogoGmail className="text-2xl"/>
 
                     </Link>
@@ -40,20 +47,20 @@ export default function Footer() {
                     </Link>
                     
                 </div>
-                <div className="border">
+                <div className="">
                     <p>twitter</p>
                     <p>facebook </p>
                     <p>whatsapp</p>
                     
                 </div>
-                <div className="border te">
+                <div className=" flex gap-10">
                     <p>Warrant/Return Policy</p>
                     <p>Terms and condition</p>
                     <FaPhone className="text-2xl"/>
                     <FaWhatsapp className="text-2xl"/>
                 </div>
             </div>
-            <div className="bg-brand2 text-brand1">
+            <div className="bg-[#e7302a] pt-10">
                 <p>&copy; {new Date().getFullYear()} Elitehub. All rights reserved.</p>
 
             </div>

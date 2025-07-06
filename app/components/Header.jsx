@@ -19,27 +19,27 @@ export default function Header() {
                     />
                     </Link>
                 </div>
-                <div className="self-center flex hidden md:flex w-130">
+                <div className="self-center flex hidden md:flex w-130 ">
                     <input 
                     type="search" 
                     aria-label="search-box"
                     name="search"
                     placeholder="what are you looking for?"
-                    className="border rounded-l-full border-r-0 pl-5 h-10 w-full"
+                    className="border rounded-l-full border-r-0 pl-5 h-10 w-full bg-[#f5f5f5]"
                     />
-                    <span className="border rounded-r-full w-20 ">
-                        <span><FaSearchengin className="text-4xl pl-3 "/></span>
+                    <span className="border rounded-r-full w-15 bg-[#5c2334]">
+                        <span><FaSearchengin className="text-4xl pl-3 text-[white]"/></span>
                     </span>
                 </div>
                 <div className=" self-center">
                     <nav className=" ">
                         <ul className="flex gap-5">
                             <li className="">
-                                <Link href="" className=""><FaOpencart className="text-29235c-500 text-2xl"/>
+                                <Link href="" className=""><FaOpencart className=" text-2xl text-[#5c2334] hover:text-[#e7302a]"/>
                                 </Link>
                             </li>
                             <li className="">
-                                <Link href="" className=""><FaRegUser className="text-[#e7302a]-900 text-2xl hover:"/>
+                                <Link href="" className=""><FaRegUser className=" text-2xl text-[#5c2334] hover:text-[#e7302a]"/>
 
 
                                 </Link>
