@@ -123,7 +123,8 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
         await createTransaction(
             product.vendorId,
             `Product Boost: ${product.name} (${plan.label})`,
-            plan.price
+            plan.price,
+            'vendor'
         );
         
         if (vendor?.uid) {
@@ -161,20 +162,12 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
   };
 
   const BoostPaymentButton = ({ product, plan }: { product: Product, plan: typeof boostPlans[0] }) => {
-    const { initializePayment } = usePaystackPayment({
+    const initializePayment = usePaystackPayment({
       publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
       currency: 'NGN',
       email: user!.email!,
       amount: plan.price * 100, // Amount is in kobo
       reference: (new Date()).getTime().toString(),
-      onSuccess: () => handleBoostPaymentSuccess(product, plan),
-      onClose: () => {
-        toast({
-          variant: 'destructive',
-          title: 'Payment Cancelled',
-          description: 'The boost payment process was cancelled.',
-        });
-      },
     });
 
     const initiateBoostPayment = () => {
@@ -182,11 +175,20 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
             toast({ variant: 'destructive', title: 'Error', description: 'User email not found.' });
             return;
         }
-        initializePayment();
+        initializePayment({
+          onSuccess: () => handleBoostPaymentSuccess(product, plan),
+          onClose: () => {
+            toast({
+              variant: 'destructive',
+              title: 'Payment Cancelled',
+              description: 'The boost payment process was cancelled.',
+            });
+          },
+        });
     };
 
     return (
-        <DropdownMenuItem onClick={initiateBoostPayment}>
+        <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={initiateBoostPayment}>
             <span>{plan.label} - ₦{plan.price.toLocaleString()}</span>
         </DropdownMenuItem>
     );
@@ -343,7 +345,7 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
                 </div>
               </CardContent>
               <CardFooter className="p-4 flex justify-between items-center">
-                <p className="text-xl font-bold text-primary">₦{product.price.toLocaleString()}</p>
+                <p className="text-xl font-bold text-primary">₦{product.price?.toLocaleString()}</p>
                 {isVendorOwnerView ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
