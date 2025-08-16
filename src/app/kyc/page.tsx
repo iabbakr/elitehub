@@ -26,9 +26,9 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const kycFormSchema = z.object({
-  idCardFront: z.instanceof(FileList).refine(files => files?.length === 1, 'Front of ID is required.'),
-  idCardBack: z.instanceof(FileList).refine(files => files?.length === 1, 'Back of ID is required.'),
-  passportPhoto: z.instanceof(FileList).refine(files => files?.length === 1, 'A passport photo is required.'),
+  idCardFront: z.any().refine((files) => files?.length === 1, 'Front of ID is required.'),
+  idCardBack: z.any().refine((files) => files?.length === 1, 'Back of ID is required.'),
+  passportPhoto: z.any().refine((files) => files?.length === 1, 'A passport photo is required.'),
   nin: z.string().length(11, 'NIN must be 11 digits.').regex(/^\d+$/, "NIN must only contain digits."),
 });
 
