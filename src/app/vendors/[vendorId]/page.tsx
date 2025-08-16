@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Loader2, ShieldCheck } from 'lucide-react';
-import { VendorDashboard } from '@/components/vendor/VendorDashboard';
+import { VendorDashboard }  from '@/components/vendor/VendorDashboard';
 import { PublicVendorProfile } from '@/components/vendor/PublicVendorProfile';
 import { fetchVendorById, fetchProductsByVendorId, type Vendor, type Product } from '@/lib/data';
 
