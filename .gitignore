@@ -1,0 +1,44 @@
+# Node.js dependencies
+/node_modules
+
+# Build output
+/.next
+/out
+/build
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Local environment variables
+.env
+.env.local
+.env*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor settings
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea
+*.swp
+
+# Firebase
+.firebase/
+.firebaserc
+
+# Next.js static export
+.next/
+out/
+
+# Misc
+*.local
