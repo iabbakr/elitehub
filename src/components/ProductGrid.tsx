@@ -201,7 +201,7 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
   }
   
   const isProductBoosted = (product: Product) => {
-      return product.boostedUntil && new Date(product.boostedUntil) > new Date();
+      return !!(product.boostedUntil && new Date(product.boostedUntil) > new Date());
   }
 
 
@@ -332,10 +332,10 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <BadgeCheck className="h-4 w-4 text-green-500"/>
+                                  <BadgeCheck className="h-4 w-4 text-green-500" />
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>Verified Vendor</p>
+                                  <p>Verified Vendor</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -364,7 +364,7 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
                 {isVendorOwnerView ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button size="sm" disabled={product.status === 'closed' || isProductBoosted(product)}>
+                        <Button size="sm" disabled={!!(product.status === 'closed' || isProductBoosted(product))}>
                             <TrendingUp className="mr-2 h-4 w-4"/>
                             {isProductBoosted(product) ? 'Boosted' : 'Boost'}
                         </Button>
