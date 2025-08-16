@@ -57,7 +57,7 @@ export default function AllProductsPage() {
 
     // Filter by brand
     if (filters.brand !== 'all') {
-        products = products.filter(p => p.brand.toLowerCase() === filters.brand.toLowerCase());
+        products = products.filter(p => p.brand && p.brand.toLowerCase() === filters.brand.toLowerCase());
     }
 
     // Filter by product name
