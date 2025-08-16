@@ -445,9 +445,9 @@ export async function fetchServiceProvidersBySubCategory(category: string, subCa
     );
     const snapshot = await getDocs(q);
     const now = new Date();
-    return snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(p => p.profileVisibleUntil && new Date(p.profileVisibleUntil) > now) as ServiceProvider[];
+    const providers = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() })) as ServiceProvider[];
+    return providers.filter(p => p.profileVisibleUntil && new Date(p.profileVisibleUntil) > now);
   } catch (error) {
     console.error("Error fetching service providers by sub-category:", error);
     return [];
