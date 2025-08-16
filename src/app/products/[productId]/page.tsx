@@ -26,6 +26,12 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel"
 import { SafetyTips } from '@/components/SafetyTips';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 
 export default function ProductDetailPage() {
@@ -216,7 +222,7 @@ export default function ProductDetailPage() {
                             <p className="font-semibold">{product.type}</p>
                         </div>
                     </div>
-                )}
+                 )}
                  
                  {product.brand && (
                     <div className="flex items-center gap-2">
@@ -415,13 +421,40 @@ export default function ProductDetailPage() {
                                 {vendor.name}
                             </Link>
                              {isBadgeActive(vendor) && (
-                                <BadgeCheck className="h-4 w-4 text-green-500" title="Verified Vendor"/>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                        <BadgeCheck className="h-4 w-4 text-green-500"/>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Verified Vendor</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                             )}
                             {vendor.tier === 'vip' && (
-                                <Crown className="h-4 w-4 text-yellow-500" title="VIP Vendor"/>
+                                 <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                        <Crown className="h-4 w-4 text-yellow-500"/>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>VIP Vendor</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                             )}
                             {vendor.tier === 'vvip' && (
-                                <Gem className="h-4 w-4 text-purple-500" title="VVIP Vendor"/>
+                                 <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                        <Gem className="h-4 w-4 text-purple-500"/>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>VVIP Vendor</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                             )}
                         </div>
                     </div>
