@@ -39,6 +39,12 @@ import { usePaystackPayment } from 'react-paystack';
 import { add } from 'date-fns';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 
 interface ProductGridProps {
@@ -323,7 +329,16 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
                        <Link href={`/vendors/${product.vendorId}`} className="hover:text-primary transition-colors flex items-center gap-1.5">
                          {vendor?.name || 'Vendor'}
                          {isBadgeActive(vendor) && (
-                            <BadgeCheck className="h-4 w-4 text-green-500" title="Verified Vendor"/>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <BadgeCheck className="h-4 w-4 text-green-500"/>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Verified Vendor</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                          )}
                        </Link>
                      )}
