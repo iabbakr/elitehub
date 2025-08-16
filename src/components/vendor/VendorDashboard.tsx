@@ -2,126 +2,200 @@
 
 'use client';
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { useState } from 'react';
+import Image from 'next/image';
+import { type Product, type Vendor } from '@/lib/data';
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 import {
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import {
+  Star,
+  BadgeCheck,
+  Building,
+  Mail,
+  MapPin,
+  User,
+  Crown,
+  Gem,
+  Phone,
+  Home,
+  FileCheck2,
+  Edit,
+  Upload,
+  AlertTriangle,
+  Loader2,
+  Package,
+} from 'lucide-react';
+import { VendorProfileForm } from '@/components/vendor/VendorProfileForm';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
-import { nigerianStates, type Vendor } from '@/lib/data';
-import { useState } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
 
-const profileFormSchema = z.object({
-  name: z.string().min(2, "Vendor name must be at least 2 characters."),
-  fullname: z.string().min(2, "Full name is required."),
-  phoneNumber: z.string().min(10, "Please enter a valid phone number."),
-  whatsappNumber: z.string().optional(),
-  address: z.string().min(10, "Please enter a valid address."),
-  city: z.string().min(2, "City is required."),
-  location: z.string({ required_error: "Please select a location." }),
-  businessDescription: z.string().min(10, "Description must be at least 10 characters."),
-});
-
-interface VendorProfileFormProps {
-    vendor: Vendor;
-    onSuccess: () => void;
-    onCancel: () => void;
+interface VendorDashboardProps {
+  vendor: Vendor;
+  products: Product[];
 }
 
-export function VendorProfileForm({ vendor, onSuccess, onCancel }: VendorProfileFormProps) {
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const form = useForm<z.infer<typeof profileFormSchema>>({
-    resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      name: vendor.name || '',
-      fullname: vendor.fullname || '',
-      phoneNumber: vendor.phoneNumber || '',
-      whatsappNumber: vendor.whatsappNumber || '',
-      address: vendor.address || '',
-      city: vendor.city || '',
-      location: vendor.location || '',
-      businessDescription: vendor.businessDescription || '',
-    },
+const uploadToCloudinary = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+  
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+      method: 'POST',
+      body: formData,
   });
-
-  async function onSubmit(values: z.infer<typeof profileFormSchema>) {
-    setIsSubmitting(true);
-    toast({ title: 'Updating Profile...', description: 'Please wait.' });
-
-    try {
-      const vendorDocRef = doc(db, 'vendors', vendor.id);
-      const updateData: Partial<Vendor> = { ...values };
-
-      // Only update whatsappNumberLastUpdated if whatsappNumber was changed
-      if (values.whatsappNumber && values.whatsappNumber !== vendor.whatsappNumber) {
-        updateData.whatsappNumberLastUpdated = serverTimestamp();
-      }
-
-      await updateDoc(vendorDocRef, updateData);
-      
-      toast({ title: 'Profile Updated!', description: 'Your information has been saved.' });
-      onSuccess();
-    } catch (error: any) {
-      console.error("Error updating profile:", error);
-      toast({ variant: 'destructive', title: "Error", description: "Failed to update profile. Please try again." });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const data = await response.json();
+  if (!response.ok) {
+      throw new Error(data.error?.message || 'Upload failed');
   }
+  return data.secure_url;
+};
+
+
+export function VendorDashboard({ vendor: initialVendor, products }: VendorDashboardProps) {
+    const { toast } = useToast();
+    const [vendor, setVendor] = useState(initialVendor);
+    const [isProfileFormOpen, setIsProfileFormOpen] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'profileImage' | 'bannerImage') => {
+        if (!e.target.files) return;
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        toast({ title: 'Uploading Image...' });
+
+        try {
+            const imageUrl = await uploadToCloudinary(file);
+            const vendorRef = doc(db, 'vendors', vendor.id);
+            await updateDoc(vendorRef, { [field]: imageUrl });
+            setVendor(prev => ({ ...prev, [field]: imageUrl }));
+            toast({ title: 'Image Updated!' });
+        } catch (error) {
+            console.error("Image upload failed: ", error);
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload image. Please try again.' });
+        } finally {
+            setIsUploading(false);
+        }
+    }
+  
+  const isBadgeActive = (v: Vendor) => {
+    if (!v.isVerified || !v.badgeExpirationDate) return false;
+    return new Date(v.badgeExpirationDate) > new Date();
+  };
 
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle>Edit Your Profile</DialogTitle>
-        <DialogDescription>
-          Update your public vendor information. Click save when you're done.
-        </DialogDescription>
-      </DialogHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-6">
-          <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Vendor Name</FormLabel><FormControl><Input placeholder="e.g. Artisan Goods Co." {...field} /></FormControl><FormMessage /></FormItem> )} />
-          <FormField control={form.control} name="fullname" render={({ field }) => ( <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem> )} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="(123) 456-7890" {...field} /></FormControl><FormMessage /></FormItem> )} />
-            <FormField control={form.control} name="whatsappNumber" render={({ field }) => ( <FormItem><FormLabel>WhatsApp Number (Optional)</FormLabel><FormControl><Input placeholder="e.g. 2348012345678" {...field} /></FormControl><FormMessage /></FormItem> )} />
+    <div className="space-y-8">
+      {vendor.status === 'banned' && (
+        <Card className="bg-destructive/10 border-destructive text-destructive-foreground">
+            <CardHeader className="flex flex-row items-center gap-4">
+                <AlertTriangle className="h-8 w-8"/>
+                <div>
+                    <CardTitle>Account Banned</CardTitle>
+                    <CardDescription className="text-destructive-foreground/80">
+                        Your account has been banned due to a violation of our terms of service. Please contact support for more information.
+                    </CardDescription>
+                </div>
+            </CardHeader>
+        </Card>
+      )}
+      <Card className="overflow-hidden shadow-lg">
+        <div className="relative h-48 md:h-64 w-full group">
+          <Image
+            src={vendor.bannerImage}
+            alt={`${vendor.name} banner`}
+            layout="fill"
+            objectFit="cover"
+            data-ai-hint="store banner"
+          />
+          <div className="absolute inset-0 bg-black/40" />
+           <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <label className="cursor-pointer">
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleProfileImageUpload(e, 'bannerImage')} />
+                    <Button variant="outline" asChild>
+                        <span><Upload className="mr-2"/> Change Banner</span>
+                    </Button>
+                </label>
+           </div>
+        </div>
+        <div className="p-6 md:p-8 bg-card relative -mt-20 md:-mt-24">
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="relative group">
+                <Image
+                  src={vendor.profileImage}
+                  alt={`${vendor.name} logo`}
+                  width={160}
+                  height={160}
+                  className="rounded-full border-4 border-card bg-card shadow-lg"
+                  data-ai-hint={vendor.dataAiHint}
+                />
+                 <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <label className="cursor-pointer">
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleProfileImageUpload(e, 'profileImage')} />
+                        <Button variant="outline" asChild>
+                            <span><Upload className="mr-2"/> Change Photo</span>
+                        </Button>
+                    </label>
+               </div>
+            </div>
+            <div className="text-center md:text-left mt-4 md:mt-0">
+              <div className="flex items-center justify-center md:justify-start gap-2">
+                <h1 className="text-3xl md:text-4xl font-bold font-headline">{vendor.name}</h1>
+                 {isBadgeActive(vendor) && <BadgeCheck className="h-8 w-8 text-green-500" />}
+                 {vendor.tier === 'vip' && <Crown className="h-8 w-8 text-yellow-500" />}
+                 {vendor.tier === 'vvip' && <Gem className="h-8 w-8 text-purple-500" />}
+              </div>
+              <div className="flex items-center justify-center md:justify-start gap-3">
+                 <div className="flex items-center justify-center md:justify-start gap-1 text-yellow-500 mt-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`h-6 w-6 ${i < Math.round(vendor.rating) ? 'fill-current' : 'text-gray-300'}`} />
+                    ))}
+                    <span className="ml-2 text-sm text-muted-foreground">({vendor.rating.toFixed(1)} from {vendor.ratingCount || 0} ratings)</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Business Address</FormLabel><FormControl><Input placeholder="123 Main Street" {...field} /></FormControl><FormMessage /></FormItem> )} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>City</FormLabel><FormControl><Input placeholder="e.g. Ikeja" {...field} /></FormControl><FormMessage /></FormItem> )} />
-            <FormField control={form.control} name="location" render={({ field }) => ( <FormItem><FormLabel>State</FormLabel><FormControl><Select onValueChange={field.onChange} defaultValue={field.value}><SelectTrigger><SelectValue placeholder="Select your state" /></SelectTrigger><SelectContent>{nigerianStates.map((state) => (<SelectItem key={state} value={state}>{state}</SelectItem>))}</SelectContent></Select></FormControl><FormMessage /></FormItem> )} />
-          </div>
-          <FormField control={form.control} name="businessDescription" render={({ field }) => ( <FormItem><FormLabel>Business Description</FormLabel><FormControl><Textarea placeholder="Describe your business and products." {...field} /></FormControl><FormMessage /></FormItem> )} />
-          
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </form>
-      </Form>
-    </>
+        </div>
+      </Card>
+      
+      <Card>
+        <CardHeader className="flex flex-row justify-between items-center">
+          <CardTitle>Vendor Information</CardTitle>
+           <Dialog open={isProfileFormOpen} onOpenChange={setIsProfileFormOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline"><Edit className="mr-2 h-4 w-4"/>Edit Profile</Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <VendorProfileForm vendor={vendor} onSuccess={() => setIsProfileFormOpen(false)} onCancel={() => setIsProfileFormOpen(false)} />
+                </DialogContent>
+            </Dialog>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <p className="text-muted-foreground">{vendor.businessDescription}</p>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 pt-4 border-t">
+                 <div className="flex items-start gap-3"><User className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">Full Name</p><p className="text-muted-foreground">{vendor.fullname}</p></div></div>
+                 <div className="flex items-start gap-3"><Phone className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">Phone</p><p className="text-muted-foreground">{vendor.phoneNumber}</p></div></div>
+                 <div className="flex items-start gap-3"><Mail className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">Email</p><p className="text-muted-foreground">{vendor.email}</p></div></div>
+                 <div className="flex items-start gap-3"><Home className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">Address</p><p className="text-muted-foreground">{vendor.address}, {vendor.city}, {vendor.location}</p></div></div>
+                {vendor.rcNumber && (
+                    <div className="flex items-start gap-3"><FileCheck2 className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">RC Number</p><p className="text-muted-foreground">{vendor.rcNumber}</p></div></div>
+                )}
+                 <div className="flex items-start gap-3"><Package className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">Post Count</p><p className="text-muted-foreground">{products.length} / {vendor.postLimit === -1 ? 'Unlimited' : vendor.postLimit}</p></div></div>
+            </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

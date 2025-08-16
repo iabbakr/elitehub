@@ -147,6 +147,7 @@ export default function AdminVendorProductsPage() {
           <DialogContent className="sm:max-w-2xl w-[95vw] h-[90vh] rounded-lg flex flex-col p-0">
                 <ProductForm
                     vendor={vendor}
+                    existingProducts={products}
                     editingProduct={editingProduct}
                     onSuccess={() => {
                         handleDialogClose();
