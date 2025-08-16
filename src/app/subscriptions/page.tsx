@@ -122,12 +122,6 @@ export default function SubscriptionsPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loadingData, setLoadingData] = useState(true);
 
-    const { initializePayment } = usePaystackPayment({
-        publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-        currency: 'NGN',
-    });
-
-
     const refreshData = async (uid: string) => {
         const vendorData = await fetchVendorByUid(uid);
         if (vendorData) {
@@ -240,7 +234,14 @@ export default function SubscriptionsPage() {
         }
 
         const amountInKobo = amount * 100;
-      
+        
+        const config = {
+            publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+            email: userEmail,
+            amount: amountInKobo,
+            reference: (new Date()).getTime().toString(),
+        };
+
         const onPaymentSuccess = async (transaction: any) => {
           console.log('Paystack transaction:', transaction);
           await createTransaction(profileId, description, amount, providerType || 'vendor');
@@ -253,15 +254,9 @@ export default function SubscriptionsPage() {
             toast({ variant: 'destructive', title: 'Payment Cancelled' });
         };
       
-        initializePayment({
-            onSuccess: onPaymentSuccess,
-            onClose: onPaymentClose,
-            config: {
-                email: userEmail,
-                amount: amountInKobo,
-                reference: (new Date()).getTime().toString(),
-            }
-        });
+        const initializePayment = usePaystackPayment(config);
+
+        initializePayment({onSuccess: onPaymentSuccess, onClose: onPaymentClose});
     };
 
     const formatTimestamp = (timestamp: any): string => {
