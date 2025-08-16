@@ -31,7 +31,9 @@ export function SearchBar({ vendors, products, categories, onFilterChange }: Sea
     const [productName, setProductName] = useState('');
 
     const uniqueBrands = useMemo(() => {
-        const brands = products.map(p => p.brand).filter(Boolean); // Filter out empty/null/undefined brands
+        const brands = products
+            .map(p => p.brand)
+            .filter((b): b is string => typeof b === 'string' && b.length > 0);
         return [...new Set(brands)];
     }, [products]);
 
