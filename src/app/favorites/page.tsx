@@ -99,7 +99,9 @@ export default function FavoritesPage() {
                                 <Image src={item.images[0]} alt={item.name} width={80} height={80} className="rounded-md" data-ai-hint={item.dataAiHint}/>
                                 <div>
                                     <p className="font-semibold group-hover:text-primary transition-colors">{item.name}</p>
-                                    <p className="text-sm text-primary font-bold">₦{item.price.toLocaleString()}</p>
+                                    {typeof item.price === 'number' && (
+                                        <p className="text-sm text-primary font-bold">₦{item.price.toLocaleString()}</p>
+                                    )}
                                 </div>
                            </Link>
                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
