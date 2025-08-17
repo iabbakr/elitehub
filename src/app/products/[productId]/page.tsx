@@ -49,21 +49,15 @@ export async function generateMetadata({ params }: { params: { productId: string
 }
 
 
-export default function ProductDetailPage({ params }: { params: { productId: string } }) {
-  const productPromise = fetchProductById(params.productId);
-  
-  const Page = async () => {
-    const product = await productPromise;
-    if (!product) {
-      notFound();
-    }
-    
-    const vendor = await fetchVendorById(product.vendorId);
-    const allProducts = await fetchProducts();
-    const relatedProducts = allProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
-
-    return <ProductClientPage initialProduct={product} initialVendor={vendor} initialRelatedProducts={relatedProducts} />;
+export default async function ProductDetailPage({ params }: { params: { productId: string } }) {
+  const product = await fetchProductById(params.productId);
+  if (!product) {
+    notFound();
   }
+  
+  const vendor = await fetchVendorById(product.vendorId);
+  const allProducts = await fetchProducts();
+  const relatedProducts = allProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
 
-  return <Page />;
+  return <ProductClientPage initialProduct={product} initialVendor={vendor} initialRelatedProducts={relatedProducts} />;
 }

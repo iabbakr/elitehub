@@ -49,16 +49,10 @@ export async function generateMetadata({ params }: { params: { serviceId: string
 }
 
 
-export default function ServiceProviderProfilePage({ params }: { params: { serviceId: string } }) {
-    const providerPromise = fetchServiceProviderById(params.serviceId);
-
-    const Page = async () => {
-        const provider = await providerPromise;
-        if (!provider) {
-            notFound();
-        }
-        return <ServiceProviderProfileClientPage initialProvider={provider} />;
+export default async function ServiceProviderProfilePage({ params }: { params: { serviceId: string } }) {
+    const provider = await fetchServiceProviderById(params.serviceId);
+    if (!provider) {
+        notFound();
     }
-    
-    return <Page />;
+    return <ServiceProviderProfileClientPage initialProvider={provider} />;
 }

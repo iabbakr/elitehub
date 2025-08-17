@@ -49,16 +49,10 @@ export async function generateMetadata({ params }: { params: { lawyerId: string 
 }
 
 
-export default function LawyerProfilePage({ params }: { params: { lawyerId: string } }) {
-    const lawyerPromise = fetchLawyerById(params.lawyerId);
-    
-    const Page = async () => {
-        const lawyer = await lawyerPromise;
-        if (!lawyer) {
-            notFound();
-        }
-        return <LawyerProfileClientPage initialLawyer={lawyer} />;
+export default async function LawyerProfilePage({ params }: { params: { lawyerId: string } }) {
+    const lawyer = await fetchLawyerById(params.lawyerId);
+    if (!lawyer) {
+        notFound();
     }
-
-    return <Page />;
+    return <LawyerProfileClientPage initialLawyer={lawyer} />;
 }
