@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { type Lawyer } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import { fetchLawyerById } from '@/lib/data';
 export function LawyerProfileClientPage({ initialLawyer }: { initialLawyer: Lawyer }) {
   const { user } = useAuth();
   const router = useRouter();
+  const params = useParams();
   const { toast } = useToast();
   const [lawyer, setLawyer] = useState<Lawyer | null>(initialLawyer);
   const [loading, setLoading] = useState(false);
@@ -34,7 +35,7 @@ export function LawyerProfileClientPage({ initialLawyer }: { initialLawyer: Lawy
   const [isProfileFormOpen, setIsProfileFormOpen] = useState(false);
   const profileInputRef = useRef<HTMLInputElement>(null);
 
-  const lawyerId = lawyer?.id;
+  const lawyerId = Array.isArray(params.lawyerId) ? params.lawyerId[0] : params.lawyerId;
   const isOwner = user && lawyer && user.uid === lawyer.uid;
 
   const refreshLawyerData = async () => {
