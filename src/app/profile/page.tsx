@@ -84,30 +84,6 @@ export default function ProfilePage() {
     );
   }
 
-  if (isAdmin) {
-    return (
-       <div className="flex justify-center items-center py-12">
-        <Card className="w-full max-w-lg shadow-xl border-primary">
-            <CardHeader className="text-center">
-                <div className="mx-auto bg-primary text-primary-foreground rounded-full h-20 w-20 flex items-center justify-center">
-                    <ShieldCheck className="h-10 w-10" />
-                </div>
-                <CardTitle className="mt-4 text-3xl font-bold font-headline">{userData.fullName}</CardTitle>
-                <CardDescription>Platform Administrator</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-6 border-t">
-                <p className="text-sm text-center text-muted-foreground">You have full administrative privileges across the platform.</p>
-                <Link href="/admin" passHref>
-                    <Button className="w-full">
-                        Go to Admin Dashboard
-                    </Button>
-                </Link>
-            </CardContent>
-        </Card>
-    </div>
-    )
-  }
-
   return (
     <div className="flex justify-center items-center py-12">
         <Card className="w-full max-w-lg shadow-xl">
