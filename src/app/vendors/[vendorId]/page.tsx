@@ -1,23 +1,71 @@
 
-
 'use client';
 
 import { useEffect, useState } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Loader2, ShieldCheck } from 'lucide-react';
-import { VendorDashboard }  from '@/components/vendor/VendorDashboard';
+import { VendorDashboard } from '@/components/vendor/VendorDashboard';
 import { PublicVendorProfile } from '@/components/vendor/PublicVendorProfile';
-import { fetchVendorById, fetchProductsByVendorId, type Vendor, type Product } from '@/lib/data';
+import { fetchVendorById, fetchProductsByVendorId, type Vendor, type Product, fetchVendors } from '@/lib/data';
+import type { Metadata } from 'next';
 
-export default function VendorProfilePage() {
-  const params = useParams();
+type Props = {
+  params: { vendorId: string }
+}
+
+export async function generateStaticParams() {
+  const vendors = await fetchVendors();
+  return vendors.map((vendor) => ({
+    vendorId: vendor.id,
+  }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const vendor = await fetchVendorById(params.vendorId);
+
+  if (!vendor) {
+    return {
+      title: 'Vendor Not Found',
+      description: 'The vendor you are looking for does not exist.',
+    };
+  }
+
+  const shortDescription = vendor.businessDescription.substring(0, 155);
+
+  return {
+    title: `${vendor.name} - Trusted Vendor on EliteHub`,
+    description: shortDescription,
+    keywords: [vendor.name, 'trusted vendor', 'nigeria', ...vendor.categories.map(c => c)],
+    openGraph: {
+      title: `${vendor.name} on EliteHub Marketplace`,
+      description: shortDescription,
+      images: [
+        {
+          url: vendor.profileImage,
+          width: 200,
+          height: 200,
+          alt: `${vendor.name} logo`,
+        },
+      ],
+      url: `https://www.elitehubng.com/vendors/${vendor.id}`,
+      siteName: 'EliteHub Marketplace',
+      type: 'profile',
+    },
+     alternates: {
+      canonical: `https://www.elitehubng.com/vendors/${vendor.id}`,
+    },
+  };
+}
+
+
+export default function VendorProfilePage({ params }: Props) {
   const { user, loading: authLoading } = useAuth();
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [vendorProducts, setVendorProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const vendorId = Array.isArray(params.vendorId) ? params.vendorId[0] : params.vendorId;
+  const vendorId = params.vendorId;
 
   useEffect(() => {
     if (vendorId) {
