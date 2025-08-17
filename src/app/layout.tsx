@@ -6,7 +6,7 @@ import { ClientLayout } from "@/components/layout/ClientLayout";
 
 export const metadata: Metadata = {
   title: "Elitehub Marketplace",
-  description: "A referral-based marketplace for the elite.",
+  description: "A marketplace for the elite.",
 };
 
 export default function RootLayout({
