@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { fetchCurrencyExchangeAgentById, type CurrencyExchangeAgent } from '@/lib/data';
+import { fetchCurrencyExchangeAgentById, type CurrencyExchangeAgent, fetchCurrencyExchangeAgents } from '@/lib/data';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Mail, Phone, MapPin, Star, Briefcase, Award, ArrowRightLeft, CircleDollarSign, Bitcoin, Wifi, Building, CheckCircle, Handshake, MessageCircle, Upload, Trash2, ShieldCheck, AlertTriangle } from 'lucide-react';
@@ -35,26 +34,58 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import Link from 'next/link';
+import type { Metadata } from 'next';
 
-const uploadToCloudinary = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
-    
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
-        method: 'POST',
-        body: formData,
-    });
-    const data = await response.json();
-    if (!response.ok) {
-        throw new Error(data.error?.message || 'Upload failed');
-    }
-    return data.secure_url;
-};
+type Props = {
+  params: { agentId: string }
+}
+
+export async function generateStaticParams() {
+  const agents = await fetchCurrencyExchangeAgents();
+  return agents.map((agent) => ({
+    agentId: agent.id,
+  }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const agent = await fetchCurrencyExchangeAgentById(params.agentId);
+
+  if (!agent) {
+    return {
+      title: 'Agent Not Found',
+      description: 'The currency exchange agent you are looking for does not exist.',
+    };
+  }
+
+  const shortDescription = agent.bio.substring(0, 155);
+
+  return {
+    title: `${agent.businessName} - Currency Exchange in ${agent.location}`,
+    description: shortDescription,
+    keywords: [agent.businessName, 'currency exchange', 'fiat', 'crypto', agent.location],
+    openGraph: {
+      title: `${agent.businessName} on EliteHub Marketplace`,
+      description: shortDescription,
+      images: [
+        {
+          url: agent.profileImage,
+          width: 200,
+          height: 200,
+          alt: `${agent.businessName} logo`,
+        },
+      ],
+      url: `https://www.elitehubng.com/currency-exchange/${agent.id}`,
+      siteName: 'EliteHub Marketplace',
+      type: 'profile',
+    },
+    alternates: {
+      canonical: `https://www.elitehubng.com/currency-exchange/${agent.id}`,
+    },
+  };
+}
 
 
-export default function AgentProfilePage() {
-  const params = useParams();
+export default function AgentProfilePage({ params }: Props) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -66,7 +97,7 @@ export default function AgentProfilePage() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
 
-  const agentId = Array.isArray(params.agentId) ? params.agentId[0] : params.agentId;
+  const agentId = params.agentId;
   const isOwner = user && agent && user.uid === agent.uid;
 
   useEffect(() => {
@@ -158,6 +189,23 @@ export default function AgentProfilePage() {
     }
   };
   
+    const uploadToCloudinary = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+    
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error?.message || 'Upload failed');
+    }
+    return data.secure_url;
+};
+
+
     const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || !agent) return;
         const file = e.target.files[0];

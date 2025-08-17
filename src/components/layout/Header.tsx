@@ -426,12 +426,6 @@ export function Header() {
                           <Link href="/" className="flex items-center gap-2 text-xl font-bold text-foreground" onClick={() => setIsMenuOpen(false)}>
                               <Logo />
                           </Link>
-                          <SheetClose asChild>
-                              <Button variant="ghost" size="icon">
-                                  <X className="h-6 w-6" />
-                                  <span className="sr-only">Close menu</span>
-                              </Button>
-                          </SheetClose>
                       </div>
                     <nav className="flex-grow flex flex-col gap-2 p-4">
                       {navLinks.map((link) => {

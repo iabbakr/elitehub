@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { fetchLogisticsCompanyById, type LogisticsCompany } from '@/lib/data';
+import { fetchLogisticsCompanyById, type LogisticsCompany, fetchLogisticsCompanies } from '@/lib/data';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Mail, Phone, MapPin, Truck, FileCheck2, Building, Star, MessageCircle, Upload, Edit, Trash2, ShieldCheck as KycIcon } from 'lucide-react';
@@ -40,26 +39,58 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import type { Metadata } from 'next';
 
-const uploadToCloudinary = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
-    
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
-        method: 'POST',
-        body: formData,
-    });
-    const data = await response.json();
-    if (!response.ok) {
-        throw new Error(data.error?.message || 'Upload failed');
-    }
-    return data.secure_url;
-};
+type Props = {
+  params: { companyId: string }
+}
+
+export async function generateStaticParams() {
+  const companies = await fetchLogisticsCompanies();
+  return companies.map((company) => ({
+    companyId: company.id,
+  }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const company = await fetchLogisticsCompanyById(params.companyId);
+
+  if (!company) {
+    return {
+      title: 'Logistics Company Not Found',
+      description: 'The logistics company you are looking for does not exist on our platform.',
+    };
+  }
+
+  const shortDescription = company.bio.substring(0, 155);
+
+  return {
+    title: `${company.name} - ${company.category} in ${company.location}`,
+    description: shortDescription,
+    keywords: [company.name, 'logistics', 'delivery', company.category, company.location],
+    openGraph: {
+      title: `${company.name} on EliteHub Marketplace`,
+      description: shortDescription,
+      images: [
+        {
+          url: company.profileImage,
+          width: 200,
+          height: 200,
+          alt: `${company.name} logo`,
+        },
+      ],
+      url: `https://www.elitehubng.com/logistics/${company.id}`,
+      siteName: 'EliteHub Marketplace',
+      type: 'profile',
+    },
+    alternates: {
+      canonical: `https://www.elitehubng.com/logistics/${company.id}`,
+    },
+  };
+}
 
 
-export default function CompanyProfilePage() {
-  const params = useParams();
+export default function CompanyProfilePage({ params }: Props) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -72,7 +103,7 @@ export default function CompanyProfilePage() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
 
-  const companyId = Array.isArray(params.companyId) ? params.companyId[0] : params.companyId;
+  const companyId = params.companyId;
 
   const isOwner = user && company && user.uid === company.uid;
   
@@ -164,6 +195,23 @@ export default function CompanyProfilePage() {
         window.location.href = `tel:${company.phoneNumber}`;
     }
   };
+  
+  const uploadToCloudinary = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+    
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error?.message || 'Upload failed');
+    }
+    return data.secure_url;
+};
+
 
    const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !company) return;

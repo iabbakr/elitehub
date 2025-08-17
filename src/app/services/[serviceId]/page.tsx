@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { fetchServiceProviderById, type ServiceProvider } from '@/lib/data';
+import { fetchServiceProviderById, type ServiceProvider, fetchServiceProviders } from '@/lib/data';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Mail, Phone, MapPin, Star, Building, Wifi, Wrench, FileCheck2, MessageCircle, Upload, Crown, Gem, BadgeCheck, Trash2, Edit, ShieldCheck as KycIcon } from 'lucide-react';
@@ -40,27 +39,58 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { ServiceProfileForm } from '@/components/service/ServiceProfileForm';
+import type { Metadata } from 'next';
+
+type Props = {
+  params: { serviceId: string }
+}
+
+export async function generateStaticParams() {
+  const providers = await fetchServiceProviders();
+  return providers.map((provider) => ({
+    serviceId: provider.id,
+  }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const provider = await fetchServiceProviderById(params.serviceId);
+
+  if (!provider) {
+    return {
+      title: 'Service Provider Not Found',
+      description: 'The service provider you are looking for does not exist on our platform.',
+    };
+  }
+
+  const shortDescription = provider.bio.substring(0, 155);
+
+  return {
+    title: `${provider.businessName} - ${provider.serviceType} in ${provider.location}`,
+    description: shortDescription,
+    keywords: [provider.businessName, provider.serviceType, provider.serviceCategory, 'nigeria'],
+    openGraph: {
+      title: `${provider.businessName} on EliteHub Marketplace`,
+      description: shortDescription,
+      images: [
+        {
+          url: provider.profileImage,
+          width: 200,
+          height: 200,
+          alt: `${provider.businessName} logo`,
+        },
+      ],
+      url: `https://www.elitehubng.com/services/${provider.id}`,
+      siteName: 'EliteHub Marketplace',
+      type: 'profile',
+    },
+     alternates: {
+      canonical: `https://www.elitehubng.com/services/${provider.id}`,
+    },
+  };
+}
 
 
-const uploadToCloudinary = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
-    
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
-        method: 'POST',
-        body: formData,
-    });
-    const data = await response.json();
-    if (!response.ok) {
-        throw new Error(data.error?.message || 'Upload failed');
-    }
-    return data.secure_url;
-};
-
-
-export default function ServiceProviderProfilePage() {
-  const params = useParams();
+export default function ServiceProviderProfilePage({ params }: Props) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -73,7 +103,7 @@ export default function ServiceProviderProfilePage() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
 
-  const serviceId = Array.isArray(params.serviceId) ? params.serviceId[0] : params.serviceId;
+  const serviceId = params.serviceId;
   
   const isOwner = user && provider && user.uid === provider.uid;
 
@@ -170,6 +200,23 @@ export default function ServiceProviderProfilePage() {
         window.location.href = `tel:${provider.phoneNumber}`;
     }
   };
+
+  const uploadToCloudinary = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+    
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error?.message || 'Upload failed');
+    }
+    return data.secure_url;
+};
+
 
   const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !provider) return;

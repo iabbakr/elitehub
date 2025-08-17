@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { fetchLawyerById, type Lawyer } from '@/lib/data';
+import { fetchLawyerById, type Lawyer, fetchLawyers } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Mail, Phone, MapPin, Scale, Briefcase, Award, Star, MessageCircle, Crown, Gem, BadgeCheck, Upload, Edit, ShieldCheck as KycIcon } from 'lucide-react';
@@ -22,26 +21,58 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { LawyerProfileForm } from '@/components/lawyer/LawyerProfileForm';
+import type { Metadata } from 'next';
 
-const uploadToCloudinary = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
-    
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
-        method: 'POST',
-        body: formData,
-    });
-    const data = await response.json();
-    if (!response.ok) {
-        throw new Error(data.error?.message || 'Upload failed');
-    }
-    return data.secure_url;
-};
+type Props = {
+  params: { lawyerId: string }
+}
+
+export async function generateStaticParams() {
+  const lawyers = await fetchLawyers();
+  return lawyers.map((lawyer) => ({
+    lawyerId: lawyer.id,
+  }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const lawyer = await fetchLawyerById(params.lawyerId);
+
+  if (!lawyer) {
+    return {
+      title: 'Lawyer Not Found',
+      description: 'The legal professional you are looking for does not exist on our platform.',
+    };
+  }
+
+  const shortDescription = lawyer.bio.substring(0, 155);
+
+  return {
+    title: `${lawyer.fullName} - Verified Lawyer in ${lawyer.location}`,
+    description: shortDescription,
+    keywords: [lawyer.fullName, 'lawyer', 'legal services', 'nigeria', ...lawyer.practiceAreas],
+    openGraph: {
+      title: `${lawyer.fullName} - EliteHub Verified Lawyer`,
+      description: shortDescription,
+      images: [
+        {
+          url: lawyer.profileImage,
+          width: 200,
+          height: 200,
+          alt: `Profile of ${lawyer.fullName}`,
+        },
+      ],
+      url: `https://www.elitehubng.com/lawyers/${lawyer.id}`,
+      siteName: 'EliteHub Marketplace',
+      type: 'profile',
+    },
+     alternates: {
+      canonical: `https://www.elitehubng.com/lawyers/${lawyer.id}`,
+    },
+  };
+}
 
 
-export default function LawyerProfilePage() {
-  const params = useParams();
+export default function LawyerProfilePage({ params }: Props) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -53,7 +84,7 @@ export default function LawyerProfilePage() {
   const [isProfileFormOpen, setIsProfileFormOpen] = useState(false);
   const profileInputRef = useRef<HTMLInputElement>(null);
 
-  const lawyerId = Array.isArray(params.lawyerId) ? params.lawyerId[0] : params.lawyerId;
+  const lawyerId = params.lawyerId;
   const isOwner = user && lawyer && user.uid === lawyer.uid;
 
   const refreshLawyerData = async () => {
@@ -150,6 +181,23 @@ export default function LawyerProfilePage() {
     }
   };
   
+  const uploadToCloudinary = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+    
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error?.message || 'Upload failed');
+    }
+    return data.secure_url;
+};
+
+
   const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !lawyer) return;
     const file = e.target.files[0];

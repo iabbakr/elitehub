@@ -495,7 +495,7 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
                 
                 transaction.set(newProductRef, { ...productData, createdAt: serverTimestamp() });
 
-                // Only increment post count if it's a paid post
+                // Only increment post count if it's a paid post and the vendor doesn't have unlimited posts
                 if(isPaidPost && currentVendor.postLimit !== -1) {
                     transaction.update(vendorRef, { postCount: increment(1) });
                 }

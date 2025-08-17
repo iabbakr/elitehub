@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -122,6 +121,8 @@ export default function SubscriptionsPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loadingData, setLoadingData] = useState(true);
 
+    const initializePayment = usePaystackPayment();
+
     const refreshData = async (uid: string) => {
         const vendorData = await fetchVendorByUid(uid);
         if (vendorData) {
@@ -233,30 +234,29 @@ export default function SubscriptionsPage() {
             return;
         }
 
-        const amountInKobo = amount * 100;
-        
-        const config = {
-            publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-            email: userEmail,
-            amount: amountInKobo,
-            reference: (new Date()).getTime().toString(),
-        };
-
         const onPaymentSuccess = async (transaction: any) => {
-          console.log('Paystack transaction:', transaction);
-          await createTransaction(profileId, description, amount, providerType || 'vendor');
-          toast({ title: 'Payment Successful', description: `Your purchase of "${description}" was successful.` });
-          onSuccessCallback();
-          if (user?.uid) refreshData(user.uid);
+            console.log('Paystack transaction:', transaction);
+            await createTransaction(profileId, description, amount, providerType || 'vendor');
+            toast({ title: 'Payment Successful', description: `Your purchase of "${description}" was successful.` });
+            onSuccessCallback();
+            if (user?.uid) refreshData(user.uid);
         };
       
         const onPaymentClose = () => {
             toast({ variant: 'destructive', title: 'Payment Cancelled' });
         };
       
-        const initializePayment = usePaystackPayment(config);
-
-        initializePayment({onSuccess: onPaymentSuccess, onClose: onPaymentClose});
+        initializePayment({
+            onSuccess: onPaymentSuccess,
+            onClose: onPaymentClose,
+            config: {
+                publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+                email: userEmail,
+                amount: amount * 100, // Amount is in kobo
+                reference: (new Date()).getTime().toString(),
+                currency: 'NGN',
+            }
+        });
     };
 
     const formatTimestamp = (timestamp: any): string => {
