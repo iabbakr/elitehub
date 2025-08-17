@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useAuth } from '@/hooks/use-auth';
@@ -28,6 +27,10 @@ export function AdminLayoutContent({ children }: { children: React.ReactNode }) 
 
     const isAdmin = user && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
+    // This useEffect hook is causing the redirect issue. It will be removed.
+    // The responsibility for checking admin status should be on the individual admin pages,
+    // not in the layout that might wrap other components unexpectedly.
+    /*
     useEffect(() => {
         if (!loading) {
             if (!isAdmin) {
@@ -35,11 +38,23 @@ export function AdminLayoutContent({ children }: { children: React.ReactNode }) 
             }
         }
     }, [user, loading, isAdmin, router]);
+    */
 
-    if (loading || !isAdmin) {
+    if (loading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+    
+    // If not an admin, we shouldn't render the admin layout at all. 
+    // The page-level logic should have already redirected.
+    // This is a fallback to prevent non-admins from seeing a broken UI.
+    if (!isAdmin) {
+        return (
+             <div className="flex h-screen w-full items-center justify-center">
+                <p>Redirecting...</p>
             </div>
         );
     }
