@@ -4,10 +4,6 @@ import { fetchServiceProviderById, fetchServiceProviders } from '@/lib/data';
 import type { Metadata } from 'next';
 import { ServiceProviderProfileClientPage } from './ServiceProviderProfileClientPage';
 
-type Props = {
-  params: { serviceId: string }
-}
-
 export async function generateStaticParams() {
   const providers = await fetchServiceProviders();
   return providers.map((provider) => ({
@@ -15,7 +11,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { serviceId: string } }): Promise<Metadata> {
   const provider = await fetchServiceProviderById(params.serviceId);
 
   if (!provider) {
@@ -53,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 
-export default async function ServiceProviderProfilePage({ params }: Props) {
+export default async function ServiceProviderProfilePage({ params }: { params: { serviceId: string } }) {
     const provider = await fetchServiceProviderById(params.serviceId);
 
     if (!provider) {

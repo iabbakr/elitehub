@@ -4,10 +4,6 @@ import { fetchVendorById, fetchProductsByVendorId, fetchVendors, type Vendor, ty
 import type { Metadata } from 'next';
 import { VendorProfilePageClient } from './VendorProfilePageClient';
 
-type Props = {
-  params: { vendorId: string }
-}
-
 export async function generateStaticParams() {
   const vendors = await fetchVendors();
   return vendors.map((vendor) => ({
@@ -15,7 +11,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { vendorId: string } }): Promise<Metadata> {
   const vendor = await fetchVendorById(params.vendorId);
 
   if (!vendor) {
@@ -53,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 
-export default async function VendorProfilePage({ params }: Props) {
+export default async function VendorProfilePage({ params }: { params: { vendorId: string } }) {
   const [vendor, vendorProducts] = await Promise.all([
     fetchVendorById(params.vendorId),
     fetchProductsByVendorId(params.vendorId)

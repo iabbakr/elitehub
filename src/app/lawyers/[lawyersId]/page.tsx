@@ -4,10 +4,6 @@ import { fetchLawyerById, fetchLawyers } from '@/lib/data';
 import type { Metadata } from 'next';
 import { LawyerProfileClientPage } from './LawyerProfileClientPage';
 
-type Props = {
-  params: { lawyerId: string }
-}
-
 export async function generateStaticParams() {
   const lawyers = await fetchLawyers();
   return lawyers.map((lawyer) => ({
@@ -15,7 +11,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { lawyerId: string } }): Promise<Metadata> {
   const lawyer = await fetchLawyerById(params.lawyerId);
 
   if (!lawyer) {
@@ -53,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 
-export default async function LawyerProfilePage({ params }: Props) {
+export default async function LawyerProfilePage({ params }: { params: { lawyerId: string } }) {
     const lawyer = await fetchLawyerById(params.lawyerId);
     
     if (!lawyer) {

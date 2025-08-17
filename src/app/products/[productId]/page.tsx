@@ -4,10 +4,6 @@ import { fetchProductById, fetchProducts, fetchVendorById, type Product, type Ve
 import type { Metadata } from 'next';
 import { ProductClientPage } from './ProductClientPage';
 
-type Props = {
-  params: { productId: string }
-}
-
 export async function generateStaticParams() {
   const products = await fetchProducts();
   return products.map((product) => ({
@@ -15,7 +11,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { productId: string } }): Promise<Metadata> {
   const product = await fetchProductById(params.productId);
 
   if (!product) {
@@ -53,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 
-export default async function ProductDetailPage({ params }: Props) {
+export default async function ProductDetailPage({ params }: { params: { productId: string } }) {
   const product = await fetchProductById(params.productId);
   
   if (!product) {
