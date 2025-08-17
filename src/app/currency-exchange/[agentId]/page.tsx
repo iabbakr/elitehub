@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: { params: { agentId: string }
 }
 
 
-export default async function AgentProfilePage({ params }: { params: { agentId: string } }) {
+export default async function CurrencyExchangeAgentProfilePage({ params }: { params: { agentId: string } }) {
   const agent = await fetchCurrencyExchangeAgentById(params.agentId);
   if (!agent) {
     notFound();
