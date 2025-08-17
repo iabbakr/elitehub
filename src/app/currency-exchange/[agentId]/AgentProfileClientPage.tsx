@@ -97,7 +97,7 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
                 rating: newAverageRating,
             });
 
-            setAgent(prev => prev ? ({ ...prev, rating: newAverageRating, ratingCount: newRatingCount }) : null);
+            setAgent(prev => prev ? ({ ...prev, rating: newAverageRating, ratingCount: newRatingCount }) : prev);
         });
         
         const ratedAgents = JSON.parse(localStorage.getItem('rated-agents') || '{}');
@@ -153,7 +153,7 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
             const imageUrl = await uploadToCloudinary(file);
             const agentRef = doc(db, 'currencyExchangeAgents', agent.id);
             await updateDoc(agentRef, { profileImage: imageUrl });
-            setAgent(prev => prev ? { ...prev, profileImage: imageUrl } : null);
+            setAgent(prev => prev ? { ...prev, profileImage: imageUrl } : prev);
             toast({ title: 'Profile Picture Updated!' });
         } catch (error) {
             console.error("Profile picture upload failed: ", error);
@@ -192,7 +192,7 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
             galleryImages: [...(agent.galleryImages || []), ...newImageUrls]
         });
 
-        setAgent(prev => prev ? ({ ...prev, galleryImages: [...(prev.galleryImages || []), ...newImageUrls]}) : null);
+        setAgent(prev => prev ? ({ ...prev, galleryImages: [...(prev.galleryImages || []), ...newImageUrls]}) : prev);
         toast({ title: 'Upload Successful!', description: 'Your gallery has been updated.' });
 
     } catch (error) {
@@ -212,7 +212,7 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
             const agentRef = doc(db, 'currencyExchangeAgents', agent.id);
             await updateDoc(agentRef, { galleryImages: updatedImages });
 
-            setAgent(prev => prev ? { ...prev, galleryImages: updatedImages } : null);
+            setAgent(prev => prev ? { ...prev, galleryImages: updatedImages } : prev);
             toast({ title: 'Image Deleted', description: 'The image has been removed from your gallery.' });
         } catch (error) {
             console.error("Error deleting image: ", error);
