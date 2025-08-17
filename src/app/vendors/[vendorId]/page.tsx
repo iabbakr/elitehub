@@ -49,15 +49,22 @@ export async function generateMetadata({ params }: { params: { vendorId: string 
 }
 
 
-export default async function VendorProfilePage({ params }: { params: { vendorId: string } }) {
-  const [vendor, vendorProducts] = await Promise.all([
-    fetchVendorById(params.vendorId),
-    fetchProductsByVendorId(params.vendorId)
-  ]);
+export default function VendorProfilePage({ params }: { params: { vendorId: string } }) {
+  const vendorPromise = fetchVendorById(params.vendorId);
+  const productsPromise = fetchProductsByVendorId(params.vendorId);
   
-  if (!vendor) {
-    notFound();
+  const Page = async () => {
+    const [vendor, vendorProducts] = await Promise.all([
+      vendorPromise,
+      productsPromise
+    ]);
+    
+    if (!vendor) {
+      notFound();
+    }
+    
+    return <VendorProfilePageClient initialVendor={vendor} initialProducts={vendorProducts} />;
   }
-  
-  return <VendorProfilePageClient initialVendor={vendor} initialProducts={vendorProducts} />;
+
+  return <Page />;
 }

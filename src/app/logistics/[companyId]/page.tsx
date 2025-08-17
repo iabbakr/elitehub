@@ -49,12 +49,16 @@ export async function generateMetadata({ params }: { params: { companyId: string
 }
 
 
-export default async function CompanyProfilePage({ params }: { params: { companyId: string } }) {
-    const company = await fetchLogisticsCompanyById(params.companyId);
+export default function CompanyProfilePage({ params }: { params: { companyId: string } }) {
+    const companyPromise = fetchLogisticsCompanyById(params.companyId);
     
-    if (!company) {
-        notFound();
+    const Page = async () => {
+        const company = await companyPromise;
+        if (!company) {
+            notFound();
+        }
+        return <CompanyProfileClientPage initialCompany={company} />;
     }
     
-    return <CompanyProfileClientPage initialCompany={company} />;
+    return <Page />;
 }

@@ -49,12 +49,16 @@ export async function generateMetadata({ params }: { params: { agentId: string }
 }
 
 
-export default async function AgentProfilePage({ params }: { params: { agentId: string } }) {
-  const agent = await fetchCurrencyExchangeAgentById(params.agentId);
-
-  if (!agent) {
-    notFound();
+export default function AgentProfilePage({ params }: { params: { agentId: string } }) {
+  const agentPromise = fetchCurrencyExchangeAgentById(params.agentId);
+  
+  const Page = async () => {
+    const agent = await agentPromise;
+    if (!agent) {
+      notFound();
+    }
+    return <AgentProfileClientPage initialAgent={agent} />;
   }
-
-  return <AgentProfileClientPage initialAgent={agent} />;
+  
+  return <Page />;
 }

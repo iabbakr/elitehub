@@ -49,20 +49,21 @@ export async function generateMetadata({ params }: { params: { productId: string
 }
 
 
-export default async function ProductDetailPage({ params }: { params: { productId: string } }) {
-  const product = await fetchProductById(params.productId);
+export default function ProductDetailPage({ params }: { params: { productId: string } }) {
+  const productPromise = fetchProductById(params.productId);
   
-  if (!product) {
-    notFound();
-  }
-  
-  // Fetch vendor separately, as the client component will need it.
-  const vendor = await fetchVendorById(product.vendorId);
-  
-  // Fetch related products here on the server
-  // In a real app, this might be a more complex query
-  const allProducts = await fetchProducts();
-  const relatedProducts = allProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
+  const Page = async () => {
+    const product = await productPromise;
+    if (!product) {
+      notFound();
+    }
+    
+    const vendor = await fetchVendorById(product.vendorId);
+    const allProducts = await fetchProducts();
+    const relatedProducts = allProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
 
-  return <ProductClientPage initialProduct={product} initialVendor={vendor} initialRelatedProducts={relatedProducts} />;
+    return <ProductClientPage initialProduct={product} initialVendor={vendor} initialRelatedProducts={relatedProducts} />;
+  }
+
+  return <Page />;
 }
