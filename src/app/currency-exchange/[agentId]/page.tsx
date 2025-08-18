@@ -12,7 +12,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: PageProps<{ agentId: string }>): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { agentId: string } }): Promise<Metadata> {
   const agent = await fetchCurrencyExchangeAgentById(params.agentId);
 
   if (!agent) {
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: PageProps<{ agentId: string }
 }
 
 
-export default async function CurrencyExchangeAgentProfilePage({ params }: PageProps<{ agentId: string }>) {
+export default async function CurrencyExchangeAgentProfilePage({ params }: { params: { agentId: string } }) {
   const agent = await fetchCurrencyExchangeAgentById(params.agentId);
   if (!agent) {
     notFound();

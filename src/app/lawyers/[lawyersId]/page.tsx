@@ -12,7 +12,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: PageProps<{ lawyerId: string }>): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { lawyerId: string } }): Promise<Metadata> {
   const lawyer = await fetchLawyerById(params.lawyerId);
 
   if (!lawyer) {
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: PageProps<{ lawyerId: string 
 }
 
 
-export default async function LawyerProfilePage({ params }: PageProps<{ lawyerId: string }>) {
+export default async function LawyerProfilePage({ params }: { params: { lawyerId: string } }) {
     const lawyer = await fetchLawyerById(params.lawyerId);
     if (!lawyer) {
         notFound();

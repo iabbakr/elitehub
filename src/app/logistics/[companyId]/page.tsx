@@ -12,7 +12,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: PageProps<{ companyId: string }>): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { companyId: string } }): Promise<Metadata> {
   const company = await fetchLogisticsCompanyById(params.companyId);
 
   if (!company) {
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: PageProps<{ companyId: string
 }
 
 
-export default async function CompanyProfilePage({ params }: PageProps<{ companyId: string }>) {
+export default async function CompanyProfilePage({ params }: { params: { companyId: string } }) {
     const company = await fetchLogisticsCompanyById(params.companyId);
     if (!company) {
         notFound();
