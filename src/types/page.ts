@@ -1,6 +1,8 @@
-
 // src/types/page.ts
-export type PageProps<T extends Record<string, string> = {}> = {
-  params: T;
-  searchParams?: { [key: string]: string | string[] | undefined };
+export type PageProps<
+  Params extends Record<string, string> = {},
+  SearchParams extends Record<string, string | string[] | undefined> = {}
+> = {
+  params: Params;
+  searchParams?: SearchParams;
 };
