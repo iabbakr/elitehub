@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { fetchLawyerById, fetchLawyers } from '@/lib/data';
 import type { Metadata } from 'next';
 import { LawyerProfileClientPage } from './LawyerProfileClientPage';
+import type { PageProps } from '@/types/page';
 
 export async function generateStaticParams() {
   const lawyers = await fetchLawyers();
@@ -11,7 +12,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: { params: { lawyerId: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<{ lawyerId: string }>): Promise<Metadata> {
   const lawyer = await fetchLawyerById(params.lawyerId);
 
   if (!lawyer) {
@@ -49,7 +50,7 @@ export async function generateMetadata({ params }: { params: { lawyerId: string 
 }
 
 
-export default async function LawyerProfilePage({ params }: { params: { lawyerId: string } }) {
+export default async function LawyerProfilePage({ params }: PageProps<{ lawyerId: string }>) {
     const lawyer = await fetchLawyerById(params.lawyerId);
     if (!lawyer) {
         notFound();

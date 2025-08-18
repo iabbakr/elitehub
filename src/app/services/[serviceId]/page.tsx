@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { fetchServiceProviderById, fetchServiceProviders } from '@/lib/data';
 import type { Metadata } from 'next';
 import { ServiceProviderProfileClientPage } from './ServiceProviderProfileClientPage';
+import type { PageProps } from '@/types/page';
 
 export async function generateStaticParams() {
   const providers = await fetchServiceProviders();
@@ -11,7 +12,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: { params: { serviceId: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<{ serviceId: string }>): Promise<Metadata> {
   const provider = await fetchServiceProviderById(params.serviceId);
 
   if (!provider) {
@@ -49,7 +50,7 @@ export async function generateMetadata({ params }: { params: { serviceId: string
 }
 
 
-export default async function ServiceProviderProfilePage({ params }: { params: { serviceId: string } }) {
+export default async function ServiceProviderProfilePage({ params }: PageProps<{ serviceId: string }>) {
     const provider = await fetchServiceProviderById(params.serviceId);
     if (!provider) {
         notFound();
