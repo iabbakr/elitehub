@@ -3,7 +3,11 @@ import { notFound } from 'next/navigation';
 import { fetchCurrencyExchangeAgentById, fetchCurrencyExchangeAgents } from '@/lib/data';
 import type { Metadata } from 'next';
 import { AgentProfileClientPage } from './AgentProfileClientPage';
-import type { PageProps } from '@/types/page';
+
+type CurrencyExchangeAgentProfilePageProps = {
+  params: { agentId: string };
+  searchParams?: { [key: string]: string | string[] | undefined };
+};
 
 export async function generateStaticParams() {
   const agents = await fetchCurrencyExchangeAgents();
@@ -50,7 +54,7 @@ export async function generateMetadata({ params }: { params: { agentId: string }
 }
 
 
-export default async function CurrencyExchangeAgentProfilePage({ params }: PageProps<{ agentId: string }>) {
+export default async function CurrencyExchangeAgentProfilePage({ params }: CurrencyExchangeAgentProfilePageProps) {
   const agent = await fetchCurrencyExchangeAgentById(params.agentId);
   if (!agent) {
     notFound();
