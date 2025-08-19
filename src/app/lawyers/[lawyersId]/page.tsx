@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { fetchLawyerById, fetchLawyers } from '@/lib/data';
 import type { Metadata } from 'next';
 import { LawyerProfileClientPage } from './LawyerProfileClientPage';
+import type { PageProps } from '@/types/page';
 
 export async function generateStaticParams() {
   const lawyers = await fetchLawyers();

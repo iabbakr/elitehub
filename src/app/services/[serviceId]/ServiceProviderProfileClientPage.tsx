@@ -127,10 +127,19 @@ export function ServiceProviderProfileClientPage({ initialProvider }: { initialP
   };
 
 
+  const getWhatsAppLink = () => {
+    if (!provider?.whatsappNumber) return '';
+    let number = provider.whatsappNumber.replace(/\+/g, '').replace(/\s/g, '');
+    if (number.startsWith('0')) {
+      number = '234' + number.substring(1);
+    }
+    return `https://wa.me/${number}?text=Hello,%20From%20Elitehub`;
+  };
+
   const handleContact = () => {
     if (!provider) return;
     if (provider.whatsappNumber) {
-        window.open(`https://wa.me/${provider.whatsappNumber}?text=Hello,%20From%20Elitehub`, '_blank');
+        window.open(getWhatsAppLink(), '_blank');
     } else {
         window.location.href = `tel:${provider.phoneNumber}`;
     }
@@ -340,7 +349,7 @@ export function ServiceProviderProfileClientPage({ initialProvider }: { initialP
                                     Edit
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-xl">
+                                <DialogContent className="sm:max-w-2xl w-[95vw] h-[90vh] rounded-lg flex flex-col p-0">
                                     <ServiceProfileForm
                                         provider={provider}
                                         onSuccess={() => {
@@ -373,7 +382,7 @@ export function ServiceProviderProfileClientPage({ initialProvider }: { initialP
                         </Button>
                         {provider.whatsappNumber ? (
                           <Button asChild className="w-full bg-green-600 hover:bg-green-700">
-                             <a href={`https://wa.me/${provider.whatsappNumber}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="mr-2 h-4 w-4"/> WhatsApp</a>
+                             <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer"><MessageCircle className="mr-2 h-4 w-4"/> WhatsApp</a>
                           </Button>
                         ) : (
                           isOwner && (

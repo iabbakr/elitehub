@@ -31,7 +31,7 @@ const generateDummyData = () => {
             referralChain: [],
             referralCode: `${username.toUpperCase()}${new Date().getFullYear()}`,
             memberSince: new Date(new Date().setMonth(new Date().getMonth() - Math.floor(Math.random() * 12))).toISOString().split('T')[0],
-            profileImage: 'https://placehold.co/128x128',
+            profileImage: 'https://res.cloudinary.com/dzh1040s2/image/upload/v1721832966/user_fck81m.png',
             bannerImage: 'https://placehold.co/1200x400',
             dataAiHint: 'store logo',
             businessDescription: `The best place for all your ${category.name.toLowerCase()} needs. We offer top quality products and services.`,
@@ -45,37 +45,78 @@ const generateDummyData = () => {
         };
         vendors.push(vendor);
 
-        const product1 = {
-            // vendorId will be set after vendor is created
-            name: `Premium ${category.name.slice(0, -1)}`,
-            price: Math.floor(Math.random() * 10000) + 5000,
-            images: ['https://placehold.co/600x400', 'https://placehold.co/600x400', 'https://placehold.co/600x400'],
-            category: category.name,
-            brand: 'EliteBrand',
-            colors: 'Black, White, Blue',
-            rating: Math.round((4 + Math.random()) * 10) / 10,
-            reviewsCount: Math.floor(Math.random() * 50),
-            dataAiHint: `${category.name.toLowerCase()} product`,
-            description: `A top-of-the-line, premium quality ${category.name.slice(0, -1).toLowerCase()} for the discerning customer. Made with the finest materials.`,
-            status: 'active' as 'active' | 'closed',
-            payOnDelivery: Math.random() > 0.5,
-        };
+        let product1: any;
+        let product2: any;
+
+        if (category.name === 'Computers') {
+            product1 = {
+                // vendorId will be set after vendor is created
+                name: `Premium ${category.name.slice(0, -1)}`,
+                price: Math.floor(Math.random() * 10000) + 5000,
+                images: ['https://placehold.co/600x400', 'https://placehold.co/600x400', 'https://placehold.co/600x400'],
+                category: category.name,
+                brand: 'EliteBrand',
+                colors: 'Black, White, Blue',
+                rating: Math.round((4 + Math.random()) * 10) / 10,
+                reviewsCount: Math.floor(Math.random() * 50),
+                dataAiHint: `${category.name.toLowerCase()} product`,
+                description: `A top-of-the-line, premium quality ${category.name.slice(0, -1).toLowerCase()} for the discerning customer. Made with the finest materials.`,
+                status: 'active' as 'active' | 'closed',
+                payOnDelivery: Math.random() > 0.5,
+            };
+            product2 = {
+                name: 'HP Elitebook 840 G6',
+                price: 280000,
+                images: ['https://placehold.co/600x400', 'https://placehold.co/600x400', 'https://placehold.co/600x400'],
+                category: 'Computers',
+                brand: 'HP',
+                condition: 'used',
+                ram: '8GB',
+                storage: '256GB SSD',
+                processorType: 'Intel Core i5',
+                generation: '8th Gen',
+                rating: 4.5,
+                reviewsCount: 18,
+                dataAiHint: 'hp elitebook laptop',
+                description: "A reliable and clean UK-used HP Elitebook 840 G6, perfect for business and personal use. Features keyboard light and fingerprint sensor for added security.",
+                status: 'active' as 'active' | 'closed',
+                payOnDelivery: true,
+            };
+
+        } else {
+             product1 = {
+                // vendorId will be set after vendor is created
+                name: `Premium ${category.name.slice(0, -1)}`,
+                price: Math.floor(Math.random() * 10000) + 5000,
+                images: ['https://placehold.co/600x400', 'https://placehold.co/600x400', 'https://placehold.co/600x400'],
+                category: category.name,
+                brand: 'EliteBrand',
+                colors: 'Black, White, Blue',
+                rating: Math.round((4 + Math.random()) * 10) / 10,
+                reviewsCount: Math.floor(Math.random() * 50),
+                dataAiHint: `${category.name.toLowerCase()} product`,
+                description: `A top-of-the-line, premium quality ${category.name.slice(0, -1).toLowerCase()} for the discerning customer. Made with the finest materials.`,
+                status: 'active' as 'active' | 'closed',
+                payOnDelivery: Math.random() > 0.5,
+            };
+            
+             product2 = {
+                // vendorId will be set after vendor is created
+                name: `Standard ${category.name.slice(0, -1)}`,
+                price: Math.floor(Math.random() * 8000) + 2000,
+                images: ['https://placehold.co/600x400', 'https://placehold.co/600x400', 'https://placehold.co/600x400'],
+                category: category.name,
+                brand: 'ValueBrand',
+                colors: 'Red, Gray',
+                rating: Math.round((3.5 + Math.random()) * 10) / 10,
+                reviewsCount: Math.floor(Math.random() * 25),
+                dataAiHint: `${category.name.toLowerCase()} item`,
+                description: `An affordable and reliable ${category.name.slice(0, -1).toLowerCase()}. Great value for money.`,
+                status: 'active' as 'active' | 'closed',
+                payOnDelivery: Math.random() > 0.5,
+            };
+        }
         
-        const product2 = {
-            // vendorId will be set after vendor is created
-            name: `Standard ${category.name.slice(0, -1)}`,
-            price: Math.floor(Math.random() * 8000) + 2000,
-            images: ['https://placehold.co/600x400', 'https://placehold.co/600x400', 'https://placehold.co/600x400'],
-            category: category.name,
-            brand: 'ValueBrand',
-            colors: 'Red, Gray',
-            rating: Math.round((3.5 + Math.random()) * 10) / 10,
-            reviewsCount: Math.floor(Math.random() * 25),
-            dataAiHint: `${category.name.toLowerCase()} item`,
-            description: `An affordable and reliable ${category.name.slice(0, -1).toLowerCase()}. Great value for money.`,
-            status: 'active' as 'active' | 'closed',
-            payOnDelivery: Math.random() > 0.5,
-        };
 
         products.push([product1, product2]);
     }

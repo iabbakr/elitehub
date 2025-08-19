@@ -51,6 +51,10 @@ const formSchema = z.object({
   terms: z.boolean().refine(value => value === true, {
     message: 'You must agree to the terms and conditions.',
   }),
+  idCardFront: z.any().optional(),
+  idCardBack: z.any().optional(),
+  passportPhoto: z.any().optional(),
+  nin: z.string().optional(),
 });
 
 const vendorProductCategories = productCategories.filter(

@@ -69,7 +69,7 @@ export default function Home() {
                     favoriteCategories.includes(p.category) &&
                     !favoriteItems.some(fav => fav.id === p.id) &&
                     p.status === 'active'
-                ).sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)); // Show newest first
+                ).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')); // Show newest first
                 setRecommendedProducts(recommendations.slice(0, 4)); // Limit to 4 recommendations
             }
         }
@@ -110,24 +110,41 @@ export default function Home() {
   }, [allProducts, allVendors, filters]);
   
   const featuredProducts = useMemo(() => {
-    const source = (filters.location !== 'all' || filters.vendor !== 'all' || filters.brand !== 'all' || filters.product || filters.category !== 'all')
-        ? filteredProducts
-        : allProducts;
+    const getVendor = (vendorId: string) => allVendors.find(v => v.id === vendorId);
+    
+    // Show search results if any filter is active
+    if (filters.location !== 'all' || filters.vendor !== 'all' || filters.brand !== 'all' || filters.product || filters.category !== 'all') {
+        return filteredProducts.slice(0, 8);
+    }
+    
+    // Otherwise, show VVIP, VIP, and Boosted products
+    const featured = allProducts.filter(p => {
+        const vendor = getVendor(p.vendorId);
+        const isBoosted = p.boostedUntil && new Date(p.boostedUntil) > new Date();
+        return vendor && (vendor.tier === 'vvip' || vendor.tier === 'vip' || isBoosted);
+    });
 
-    const boostedProducts = source.filter(p => p.boostedUntil && new Date(p.boostedUntil) > new Date());
-    const regularProducts = source.filter(p => !p.boostedUntil || new Date(p.boostedUntil) <= new Date());
-    
-    // Sort boosted products by expiration date, newest first
-    boostedProducts.sort((a, b) => new Date(b.boostedUntil!).getTime() - new Date(a.boostedUntil!).getTime());
-    
-    // Shuffle regular products
-    const shuffledRegularProducts = shuffleArray(regularProducts);
-    
-    // Combine and slice
-    const combined = [...boostedProducts, ...shuffledRegularProducts];
-    
-    return combined.slice(0, 8);
-  }, [allProducts, filteredProducts, filters]);
+    featured.sort((a, b) => {
+        const vendorA = getVendor(a.vendorId);
+        const vendorB = getVendor(b.vendorId);
+
+        const tierOrder = { 'vvip': 3, 'vip': 2 };
+        const tierA = vendorA?.tier ? tierOrder[vendorA.tier as keyof typeof tierOrder] || 0 : 0;
+        const tierB = vendorB?.tier ? tierOrder[vendorB.tier as keyof typeof tierOrder] || 0 : 0;
+
+        if (tierB !== tierA) return tierB - tierA; // Sort by tier first
+
+        const boostedA = a.boostedUntil && new Date(a.boostedUntil) > new Date();
+        const boostedB = b.boostedUntil && new Date(b.boostedUntil) > new Date();
+
+        if (boostedB && !boostedA) return 1;
+        if (!boostedB && boostedA) return -1;
+        
+        return 0; // Keep original order if tiers and boost status are the same
+    });
+
+    return featured.slice(0, 8);
+  }, [allProducts, allVendors, filteredProducts, filters]);
 
 
   return (

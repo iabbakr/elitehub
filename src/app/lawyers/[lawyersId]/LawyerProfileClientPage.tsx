@@ -65,7 +65,7 @@ export function LawyerProfileClientPage({ initialLawyer }: { initialLawyer: Lawy
     }
 
     if (hasRated) {
-        toast({ title: 'Already Rated', description: 'You have already submitted a rating for this lawyer.' });
+        toast({ title: 'Already Rated', description: 'You have already rated this lawyer.' });
         return;
     }
 
@@ -107,10 +107,19 @@ export function LawyerProfileClientPage({ initialLawyer }: { initialLawyer: Lawy
   };
 
 
+  const getWhatsAppLink = () => {
+    if (!lawyer?.whatsappNumber) return '';
+    let number = lawyer.whatsappNumber.replace(/\+/g, '').replace(/\s/g, '');
+    if (number.startsWith('0')) {
+      number = '234' + number.substring(1);
+    }
+    return `https://wa.me/${number}?text=Hello,%20From%20Elitehub`;
+  };
+
   const handleContact = () => {
     if (!lawyer) return;
     if (lawyer.whatsappNumber) {
-        window.open(`https://wa.me/${lawyer.whatsappNumber}?text=Hello,%20From%20Elitehub`, '_blank');
+        window.open(getWhatsAppLink(), '_blank');
     } else {
         window.location.href = `tel:${lawyer.phoneNumber}`;
     }
@@ -278,7 +287,7 @@ export function LawyerProfileClientPage({ initialLawyer }: { initialLawyer: Lawy
                                     Edit
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-xl">
+                                <DialogContent className="sm:max-w-2xl w-[95vw] h-[90vh] rounded-lg flex flex-col p-0">
                                     <LawyerProfileForm
                                         lawyer={lawyer}
                                         onSuccess={() => {

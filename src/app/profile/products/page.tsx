@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ProductForm } from '@/components/vendor/ProductForm';
+import { ViewToggle, type ViewMode } from '@/components/ViewToggle';
 
 
 function MyProductsPageComponent() {
@@ -29,6 +30,7 @@ function MyProductsPageComponent() {
   const [loadingData, setLoadingData] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   const loadVendorProducts = async (vendorId: string) => {
     const vendorProducts = await fetchProductsByVendorId(vendorId);
@@ -130,7 +132,7 @@ function MyProductsPageComponent() {
 
   return (
       <div className="space-y-8">
-          <header className="flex justify-between items-center">
+          <header className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div>
                <h1 className="text-4xl font-bold font-headline tracking-tight text-foreground">
                   My Products
@@ -139,10 +141,13 @@ function MyProductsPageComponent() {
                   Manage all of your product listings.
                </p>
             </div>
-             <Button onClick={openNewDialog}>
-                <PackagePlus className="mr-2 h-5 w-5" />
-                Add New Product
-             </Button>
+             <div className="flex items-center gap-4">
+                <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+                <Button onClick={openNewDialog}>
+                    <PackagePlus className="mr-2 h-5 w-5" />
+                    Add New Product
+                </Button>
+            </div>
           </header>
 
         <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
@@ -174,6 +179,7 @@ function MyProductsPageComponent() {
                 vendors={[vendor]}
                 showAdminControls
                 isVendorOwnerView
+                viewMode={viewMode}
                 onEdit={openEditDialog}
                 onToggleStatus={handleToggleProductStatus}
                 onDelete={handleDeleteProduct}
@@ -199,4 +205,5 @@ export default function MyProductsPage() {
       </Suspense>
     );
 }
+
 

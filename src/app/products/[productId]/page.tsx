@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { fetchProductById, fetchProducts, fetchVendorById, type Product, type Vendor } from '@/lib/data';
 import type { Metadata } from 'next';
 import { ProductClientPage } from './ProductClientPage';
+import type { PageProps } from '@/types/page';
 
 export async function generateStaticParams() {
   const products = await fetchProducts();

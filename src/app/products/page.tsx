@@ -7,6 +7,7 @@ import { ProductGrid } from '@/components/ProductGrid';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SearchBar } from '@/components/SearchBar';
 import type { FilterState } from '@/lib/data';
+import { ViewToggle, type ViewMode } from '@/components/ViewToggle';
 
 export default function AllProductsPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -19,6 +20,7 @@ export default function AllProductsPage() {
     brand: 'all',
     product: '',
   });
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -40,8 +42,9 @@ export default function AllProductsPage() {
 
   const sortedAndFilteredProducts = useMemo(() => {
     let products = [...allProducts];
+    const getVendor = (vendorId: string) => allVendors.find(v => v.id === vendorId);
 
-    // Filter by vendor (which indirectly filters by location)
+    // Filter by various criteria
     if (filters.vendor !== 'all') {
         products = products.filter(p => p.vendorId === filters.vendor);
     } else if (filters.location !== 'all') {
@@ -55,25 +58,39 @@ export default function AllProductsPage() {
         products = products.filter(p => p.category === filters.category);
     }
 
-    // Filter by brand
     if (filters.brand !== 'all') {
         products = products.filter(p => p.brand && p.brand.toLowerCase() === filters.brand.toLowerCase());
     }
 
-    // Filter by product name
     if (filters.product) {
         products = products.filter(p => p.name.toLowerCase().includes(filters.product.toLowerCase()));
     }
     
-    // Then, separate boosted products from the filtered list
-    const boostedProducts = products.filter(p => p.boostedUntil && new Date(p.boostedUntil) > new Date());
-    const regularProducts = products.filter(p => !p.boostedUntil || new Date(p.boostedUntil) <= new Date());
+    // Sort the filtered products
+    products.sort((a, b) => {
+        const vendorA = getVendor(a.vendorId);
+        const vendorB = getVendor(b.vendorId);
 
-    // Sort boosted products by expiration date, newest first
-    boostedProducts.sort((a, b) => new Date(b.boostedUntil!).getTime() - new Date(a.boostedUntil!).getTime());
+        const tierOrder = { 'vvip': 4, 'vip': 3 };
+        const tierA = vendorA?.tier ? tierOrder[vendorA.tier as keyof typeof tierOrder] || 0 : 0;
+        const tierB = vendorB?.tier ? tierOrder[vendorB.tier as keyof typeof tierOrder] || 0 : 0;
 
-    // Return boosted products at the top
-    return [...boostedProducts, ...regularProducts];
+        if (tierB !== tierA) return tierB - tierA; // Sort by tier first
+
+        const boostedA = a.boostedUntil && new Date(a.boostedUntil) > new Date() ? 2 : 0;
+        const boostedB = b.boostedUntil && new Date(b.boostedUntil) > new Date() ? 2 : 0;
+
+        if (boostedB !== boostedA) return boostedB - boostedA; // Then by boost status
+
+        const verifiedA = vendorA?.isVerified ? 1 : 0;
+        const verifiedB = vendorB?.isVerified ? 1 : 0;
+
+        if (verifiedB !== verifiedA) return verifiedB - verifiedA; // Then by verified status
+
+        return 0; // Keep original order if all else is equal
+    });
+
+    return products;
 
   }, [allProducts, allVendors, filters]);
 
@@ -107,6 +124,10 @@ export default function AllProductsPage() {
           onFilterChange={setFilters}
         />
       )}
+
+      <div className="flex justify-end">
+          <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+      </div>
       
       <section>
           {loading ? (
@@ -120,7 +141,7 @@ export default function AllProductsPage() {
                   ))}
               </div>
           ) : (
-            <ProductGrid products={sortedAndFilteredProducts} vendors={allVendors} />
+            <ProductGrid products={sortedAndFilteredProducts} vendors={allVendors} viewMode={viewMode} />
           )}
         </section>
     </div>

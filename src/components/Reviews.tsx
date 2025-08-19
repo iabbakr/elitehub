@@ -46,6 +46,7 @@ export function Reviews({ product, vendor }: { product: Product, vendor: Vendor 
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [userHasReviewed, setUserHasReviewed] = useState(false);
+  const isVendorOwner = user && vendor && user.uid === vendor.uid;
 
   const fetchReviews = async () => {
     setLoading(true);
@@ -92,6 +93,10 @@ export function Reviews({ product, vendor }: { product: Product, vendor: Vendor 
       toast({ variant: 'destructive', title: 'Please log in to leave a review.' });
       router.push('/login');
       return;
+    }
+    if(isVendorOwner) {
+        toast({ variant: 'destructive', title: 'Action not allowed.', description: 'You cannot review your own product.'});
+        return;
     }
     if ((newRating === 0 && !userHasReviewed) || newReviewText.trim() === '') {
       toast({ variant: 'destructive', title: 'Please provide a rating and a comment.' });
@@ -217,7 +222,7 @@ export function Reviews({ product, vendor }: { product: Product, vendor: Vendor 
       </CardHeader>
       <CardContent className="space-y-8">
         {/* Review Form */}
-        {user && (
+        {user && !isVendorOwner && (
           <form onSubmit={handleReviewSubmit} className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-semibold">{userHasReviewed ? "Add a comment" : "Write a Review"}</h3>
              {!userHasReviewed && (
@@ -271,9 +276,11 @@ export function Reviews({ product, vendor }: { product: Product, vendor: Vendor 
                             </div>
                            )}
                        </div>
-                       <Button variant="link" size="sm" onClick={() => setReplyingTo(replyingTo === review.id ? null : review.id)}>
-                         Reply
-                       </Button>
+                       {user && (
+                         <Button variant="link" size="sm" onClick={() => setReplyingTo(replyingTo === review.id ? null : review.id)}>
+                           Reply
+                         </Button>
+                       )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-2">{review.comment}</p>
                    

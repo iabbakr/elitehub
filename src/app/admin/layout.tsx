@@ -1,6 +1,7 @@
 
 import { AuthProvider } from '@/context/AuthContext';
 import { AdminLayoutContent } from '@/components/layout/AdminLayoutContent';
+import { Toaster } from '@/components/ui/toaster';
 
 export default function AdminRootLayout({
   children,
@@ -12,6 +13,7 @@ export default function AdminRootLayout({
     return (
         <AuthProvider>
             <AdminLayoutContent>{children}</AdminLayoutContent>
+            <Toaster />
         </AuthProvider>
     );
 }

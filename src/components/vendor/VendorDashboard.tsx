@@ -39,6 +39,8 @@ import { VendorProfileForm } from '@/components/vendor/VendorProfileForm';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { Separator } from '@/components/ui/separator';
+import { VendorStats } from './VendorStats';
 
 interface VendorDashboardProps {
   vendor: Vendor;
@@ -168,6 +170,8 @@ export function VendorDashboard({ vendor: initialVendor, products }: VendorDashb
           </div>
         </div>
       </Card>
+
+      <VendorStats vendor={vendor} products={products} />
       
       <Card>
         <CardHeader className="flex flex-row justify-between items-center">
@@ -176,25 +180,71 @@ export function VendorDashboard({ vendor: initialVendor, products }: VendorDashb
                 <DialogTrigger asChild>
                     <Button variant="outline"><Edit className="mr-2 h-4 w-4"/>Edit Profile</Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-2xl w-[95vw] h-[90vh] rounded-lg flex flex-col p-0">
                     <VendorProfileForm vendor={vendor} onSuccess={() => setIsProfileFormOpen(false)} onCancel={() => setIsProfileFormOpen(false)} />
                 </DialogContent>
             </Dialog>
         </CardHeader>
-        <CardContent className="space-y-6">
-            <p className="text-muted-foreground">{vendor.businessDescription}</p>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 pt-4 border-t">
-                 <div className="flex items-start gap-3"><User className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">Full Name</p><p className="text-muted-foreground">{vendor.fullname}</p></div></div>
-                 <div className="flex items-start gap-3"><Phone className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">Phone</p><p className="text-muted-foreground">{vendor.phoneNumber}</p></div></div>
-                 <div className="flex items-start gap-3"><Mail className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">Email</p><p className="text-muted-foreground">{vendor.email}</p></div></div>
-                 <div className="flex items-start gap-3"><Home className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">Address</p><p className="text-muted-foreground">{vendor.address}, {vendor.city}, {vendor.location}</p></div></div>
-                {vendor.rcNumber && (
-                    <div className="flex items-start gap-3"><FileCheck2 className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">RC Number</p><p className="text-muted-foreground">{vendor.rcNumber}</p></div></div>
-                )}
-                 <div className="flex items-start gap-3"><Package className="h-5 w-5 text-muted-foreground mt-1" /><div><p className="font-semibold">Post Count</p><p className="text-muted-foreground">{products.length} / {vendor.postLimit === -1 ? 'Unlimited' : vendor.postLimit}</p></div></div>
+        <CardContent className="space-y-4">
+            <p className="text-muted-foreground pb-4">{vendor.businessDescription}</p>
+
+            <Separator />
+            <div className="flex items-start gap-3 pt-4">
+                <User className="h-5 w-5 text-muted-foreground mt-1" />
+                <div>
+                <p className="font-semibold">Full Name</p>
+                <p className="text-muted-foreground">{vendor.fullname}</p>
+                </div>
+            </div>
+            <Separator />
+            <div className="flex items-start gap-3 pt-4">
+                <Phone className="h-5 w-5 text-muted-foreground mt-1" />
+                <div>
+                <p className="font-semibold">Phone</p>
+                <p className="text-muted-foreground">{vendor.phoneNumber}</p>
+                </div>
+            </div>
+            <Separator />
+            <div className="flex items-start gap-3 pt-4">
+                <Mail className="h-5 w-5 text-muted-foreground mt-1" />
+                <div>
+                <p className="font-semibold">Email</p>
+                <p className="text-muted-foreground">{vendor.email}</p>
+                </div>
+            </div>
+            <Separator />
+            <div className="flex items-start gap-3 pt-4">
+                <Home className="h-5 w-5 text-muted-foreground mt-1" />
+                <div>
+                <p className="font-semibold">Address</p>
+                <p className="text-muted-foreground">{vendor.address}, {vendor.city}, {vendor.location}</p>
+                </div>
+            </div>
+            {vendor.rcNumber && (
+                <>
+                    <Separator />
+                    <div className="flex items-start gap-3 pt-4">
+                        <FileCheck2 className="h-5 w-5 text-muted-foreground mt-1" />
+                        <div>
+                        <p className="font-semibold">RC Number</p>
+                        <p className="text-muted-foreground">{vendor.rcNumber}</p>
+                        </div>
+                    </div>
+                </>
+            )}
+            <Separator />
+            <div className="flex items-start gap-3 pt-4">
+                 <Package className="h-5 w-5 text-muted-foreground mt-1" />
+                 <div>
+                    <p className="font-semibold">Post Count</p>
+                    <p className="text-muted-foreground">{products.length} / {vendor.postLimit === -1 ? 'Unlimited' : vendor.postLimit}</p>
+                 </div>
             </div>
         </CardContent>
       </Card>
+      
+      
+
     </div>
   );
 }

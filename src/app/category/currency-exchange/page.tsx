@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,12 +20,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { ViewToggle, type ViewMode } from '@/components/ViewToggle';
 
 export default function FindCurrencyExchangePage() {
   const [agents, setAgents] = useState<CurrencyExchangeAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   useEffect(() => {
     const getAgents = async () => {
@@ -82,7 +83,7 @@ export default function FindCurrencyExchangePage() {
         </p>
       </header>
 
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-2">
             <div className="relative md:col-span-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -104,6 +105,9 @@ export default function FindCurrencyExchangePage() {
                 </SelectContent>
             </Select>
        </div>
+       <div className="flex justify-end mb-8 max-w-2xl mx-auto">
+          <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+       </div>
 
        {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -117,65 +121,97 @@ export default function FindCurrencyExchangePage() {
             ))}
         </div>
       ) : filteredAgents.length > 0 ? (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className={cn(
+          "gap-8",
+          viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"
+      )}>
         {filteredAgents.map((agent) => (
-          <Card key={agent.id} className="flex flex-col text-center hover:shadow-xl transition-shadow duration-300 rounded-xl">
-            <CardHeader className="items-center">
-              <div className="relative">
-                <Image
-                  src={agent.profileImage}
-                  alt={`${agent.businessName} logo`}
-                  width={80}
-                  height={80}
-                  className="rounded-full object-cover border-4 border-background outline outline-2 outline-border"
-                />
-                 {agent.tier === 'vvip' && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                           <Badge variant="destructive" className="absolute -top-1 -right-2 p-1 h-auto w-auto">
-                              <Award className="h-4 w-4"/>
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Highly Recommended</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                 )}
-                 {agent.isVerified && (
-                  <div className="absolute -bottom-1 -right-1 bg-green-500 text-white rounded-full p-1 border-2 border-background">
-                      <BadgeCheck className="h-4 w-4" />
+          viewMode === 'grid' ? (
+              <Card key={agent.id} className="flex flex-col text-center hover:shadow-xl transition-shadow duration-300 rounded-xl">
+                <CardHeader className="items-center">
+                  <div className="relative">
+                    <Image
+                      src={agent.profileImage}
+                      alt={`${agent.businessName} logo`}
+                      width={80}
+                      height={80}
+                      className="rounded-full object-cover border-4 border-background outline outline-2 outline-border"
+                    />
+                     {agent.tier === 'vvip' && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                               <Badge variant="destructive" className="absolute -top-1 -right-2 p-1 h-auto w-auto">
+                                  <Award className="h-4 w-4"/>
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Highly Recommended</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                     )}
+                     {agent.isVerified && (
+                      <div className="absolute -bottom-1 -right-1 bg-green-500 text-white rounded-full p-1 border-2 border-background">
+                          <BadgeCheck className="h-4 w-4" />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <CardTitle className="text-2xl font-headline mt-4 flex items-center justify-center gap-2">
-                <span>{agent.businessName}</span>
-                 {agent.tier === 'vip' && <Crown className="h-6 w-6 text-yellow-500" />}
-                 {agent.tier === 'vvip' && <Gem className="h-6 w-6 text-purple-500" />}
-              </CardTitle>
-               <CardDescription className="flex items-center justify-center gap-2 pt-1 text-xs text-muted-foreground">
-                <MapPin className="h-4 w-4" /> {agent.city}, {agent.location}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow flex flex-col justify-center items-center">
-                <div className="flex items-center justify-center gap-4">
-                    {agent.currenciesAccepted.includes('Fiat') && <Badge variant="secondary" className="gap-1"><CircleDollarSign className="h-4 w-4" /> Fiat</Badge>}
-                    {agent.currenciesAccepted.includes('Crypto') && <Badge variant="secondary" className="gap-1"><Bitcoin className="h-4 w-4" /> Crypto</Badge>}
+                  <CardTitle className="text-2xl font-headline mt-4 flex items-center justify-center gap-2">
+                    <span>{agent.businessName}</span>
+                     {agent.tier === 'vip' && <Crown className="h-6 w-6 text-yellow-500" />}
+                     {agent.tier === 'vvip' && <Gem className="h-6 w-6 text-purple-500" />}
+                  </CardTitle>
+                   <CardDescription className="flex items-center justify-center gap-2 pt-1 text-xs text-muted-foreground">
+                    <MapPin className="h-4 w-4" /> {agent.city}, {agent.location}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow flex flex-col justify-center items-center">
+                    <div className="flex items-center justify-center gap-4">
+                        {agent.currenciesAccepted.includes('Fiat') && <Badge variant="secondary" className="gap-1"><CircleDollarSign className="h-4 w-4" /> Fiat</Badge>}
+                        {agent.currenciesAccepted.includes('Crypto') && <Badge variant="secondary" className="gap-1"><Bitcoin className="h-4 w-4" /> Crypto</Badge>}
+                    </div>
+                     <div className="flex items-center justify-center gap-1 text-yellow-500 mt-4">
+                        {[...Array(5)].map((_, i) => (
+                            <Star key={i} className={cn('h-4 w-4', (agent.rating || 0) > i ? 'fill-current' : 'text-gray-300')} />
+                        ))}
+                         <span className="ml-1 text-xs text-muted-foreground">({agent.ratingCount || 0})</span>
+                    </div>
+                </CardContent>
+                <div className="p-6 pt-2">
+                  <Link href={`/currency-exchange/${agent.id}`} passHref>
+                    <Button className="w-full">View Profile</Button>
+                  </Link>
                 </div>
-                 <div className="flex items-center justify-center gap-1 text-yellow-500 mt-4">
-                    {[...Array(5)].map((_, i) => (
-                        <Star key={i} className={cn('h-4 w-4', (agent.rating || 0) > i ? 'fill-current' : 'text-gray-300')} />
-                    ))}
-                     <span className="ml-1 text-xs text-muted-foreground">({agent.ratingCount || 0})</span>
-                </div>
-            </CardContent>
-            <div className="p-6 pt-2">
-              <Link href={`/currency-exchange/${agent.id}`} passHref>
-                <Button className="w-full">View Profile</Button>
-              </Link>
-            </div>
-          </Card>
+              </Card>
+          ) : (
+            <Card key={agent.id} className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Image src={agent.profileImage} alt={`${agent.businessName} logo`} width={64} height={64} className="rounded-full object-cover"/>
+                        <div>
+                            <Link href={`/currency-exchange/${agent.id}`} className="font-bold hover:underline">{agent.businessName}</Link>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3"/>{agent.city}, {agent.location}</p>
+                             <div className="flex items-center gap-1 text-yellow-500 mt-1">
+                                {[...Array(5)].map((_, i) => (
+                                    <Star key={i} className={cn('h-4 w-4', (agent.rating || 0) > i ? 'fill-current' : 'text-gray-300')} />
+                                ))}
+                                <span className="ml-1 text-xs text-muted-foreground">({agent.ratingCount || 0})</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                         <div className="flex items-center gap-2">
+                           {agent.currenciesAccepted.includes('Fiat') && <Badge variant="secondary" className="gap-1"><CircleDollarSign className="h-4 w-4" /> Fiat</Badge>}
+                           {agent.currenciesAccepted.includes('Crypto') && <Badge variant="secondary" className="gap-1"><Bitcoin className="h-4 w-4" /> Crypto</Badge>}
+                         </div>
+                        <Button asChild size="sm">
+                            <Link href={`/currency-exchange/${agent.id}`}>View Profile</Link>
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+          )
         ))}
       </div>
       ) : (

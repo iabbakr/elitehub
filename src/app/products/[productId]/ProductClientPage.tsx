@@ -39,6 +39,10 @@ interface ProductClientPageProps {
   initialRelatedProducts: Product[];
 }
 
+const dispatchStorageEvent = () => {
+    window.dispatchEvent(new Event("storage"));
+};
+
 export function ProductClientPage({ initialProduct, initialVendor, initialRelatedProducts }: ProductClientPageProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -86,7 +90,7 @@ export function ProductClientPage({ initialProduct, initialVendor, initialRelate
     );
   }
 
-  const handleAddToFavorites = () => {
+  const handleAddToFavorites = async () => {
     if (!user) {
         toast({
             variant: 'destructive',
@@ -106,10 +110,25 @@ export function ProductClientPage({ initialProduct, initialVendor, initialRelate
     
     const newFavorites = [...currentFavorites, product];
     localStorage.setItem('user-favorites', JSON.stringify(newFavorites));
+    dispatchStorageEvent();
+    
+    // Increment favorite count on the product
+    const productRef = doc(db, 'products', product.id);
+    await updateDoc(productRef, { favoriteCount: increment(1) });
+
     toast({
         title: "Added to Favorites!",
         description: `${product.name} has been saved.`,
     });
+  };
+
+  const getWhatsAppLink = () => {
+    if (!vendor?.whatsappNumber) return '';
+    let number = vendor.whatsappNumber.replace(/\+/g, '').replace(/\s/g, '');
+    if (number.startsWith('0')) {
+      number = '234' + number.substring(1);
+    }
+    return `https://wa.me/${number}?text=Hello,%20I'm%20interested%20in%20your%20product%20'${product.name}'%20on%20Elitehub.`;
   };
 
   const isProductClosed = product.status === 'closed';
@@ -483,7 +502,7 @@ export function ProductClientPage({ initialProduct, initialVendor, initialRelate
                      <div className="flex flex-col sm:flex-row gap-4">
                          {vendor?.whatsappNumber ? (
                             <Button asChild size="lg" className="flex-1 text-lg py-6 bg-green-600 hover:bg-green-700">
-                                <a href={`https://wa.me/${vendor.whatsappNumber}?text=Hello,%20I'm%20interested%20in%20your%20product%20'${product.name}'%20on%20Elitehub.`} target="_blank" rel="noopener noreferrer">
+                                <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer">
                                    <MessageSquare className="mr-2 h-6 w-6"/> WhatsApp
                                 </a>
                             </Button>

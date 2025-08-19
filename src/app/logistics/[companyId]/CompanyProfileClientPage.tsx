@@ -123,11 +123,19 @@ export function CompanyProfileClientPage({ initialCompany }: { initialCompany: L
     }
   };
 
+  const getWhatsAppLink = () => {
+    if (!company?.whatsappNumber) return '';
+    let number = company.whatsappNumber.replace(/\+/g, '').replace(/\s/g, '');
+    if (number.startsWith('0')) {
+      number = '234' + number.substring(1);
+    }
+    return `https://wa.me/${number}?text=Hello,%20From%20Elitehub`;
+  };
 
   const handleContact = () => {
     if (!company) return;
     if (company.whatsappNumber) {
-        window.open(`https://wa.me/${company.whatsappNumber}?text=Hello,%20From%20Elitehub`, '_blank');
+        window.open(getWhatsAppLink(), '_blank');
     } else {
         window.location.href = `tel:${company.phoneNumber}`;
     }
@@ -314,7 +322,7 @@ export function CompanyProfileClientPage({ initialCompany }: { initialCompany: L
                                     Edit
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-xl">
+                                <DialogContent className="sm:max-w-2xl w-[95vw] h-[90vh] rounded-lg flex flex-col p-0">
                                     <LogisticsProfileForm
                                         company={company}
                                         onSuccess={() => {

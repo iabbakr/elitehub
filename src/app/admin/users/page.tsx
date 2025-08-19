@@ -52,11 +52,11 @@ export default function AllUsersPage() {
         case 'inactive':
             return sortableUsers.sort((a, b) => (a.lastLogin?.seconds || 0) - (b.lastLogin?.seconds || 0)).slice(0, 50);
         default:
-            return sortableUsers.sort((a, b) => a.fullName.localeCompare(b.fullName));
+            return sortableUsers.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
     }
   }, [allUsers, filter]);
 
-  const filteredUsers = useMemo(() => sortedUsers.filter(u => u.fullName.toLowerCase().includes(userSearch.toLowerCase()) || u.email.toLowerCase().includes(userSearch.toLowerCase())), [sortedUsers, userSearch]);
+  const filteredUsers = useMemo(() => sortedUsers.filter(u => (u.fullName || '').toLowerCase().includes(userSearch.toLowerCase()) || (u.email || '').toLowerCase().includes(userSearch.toLowerCase())), [sortedUsers, userSearch]);
 
   const handleEmailAll = () => {
     const emails = filteredUsers.map(u => u.email).join(',');
@@ -77,13 +77,13 @@ export default function AllUsersPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold font-headline tracking-tight text-foreground flex items-center gap-3">
-          <Users className="h-10 w-10 text-primary" />
+    <div className="space-y-6 md:space-y-8">
+      <header>
+        <h1 className="text-3xl md:text-4xl font-bold font-headline tracking-tight text-foreground flex items-center gap-3">
+          <Users className="h-8 w-8 text-primary" />
           User Management
         </h1>
-        <p className="mt-2 text-lg text-muted-foreground">
+        <p className="mt-1 text-lg text-muted-foreground">
           Oversee all registered user accounts.
         </p>
       </header>
@@ -112,8 +112,8 @@ export default function AllUsersPage() {
                 <TableHeader>
                     <TableRow>
                     <TableHead>User</TableHead>
-                    <TableHead>Registered</TableHead>
-                    <TableHead>Last Login</TableHead>
+                    <TableHead className="hidden sm:table-cell">Registered</TableHead>
+                    <TableHead className="hidden md:table-cell">Last Login</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -122,10 +122,13 @@ export default function AllUsersPage() {
                     filteredUsers.map((user) => (
                         <TableRow key={user.id}>
                         <TableCell className="font-medium">
-                            <div className="flex flex-col"><span>{user.fullName}</span><span className="text-xs text-muted-foreground">{user.email}</span></div>
+                            <div className="flex flex-col">
+                                <span className="font-semibold">{user.fullName}</span>
+                                <span className="text-xs text-muted-foreground">{user.email}</span>
+                            </div>
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{new Date(user.createdAt.seconds * 1000).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{user.lastLogin ? new Date(user.lastLogin.seconds * 1000).toLocaleString() : 'Never'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground hidden sm:table-cell">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground hidden md:table-cell">{user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</TableCell>
                         <TableCell className="text-right">
                             <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>

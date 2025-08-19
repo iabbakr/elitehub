@@ -114,14 +114,13 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
     }
   };
 
-
-  const handleContact = () => {
-    if (!agent) return;
-    if (agent.whatsappNumber) {
-        window.open(`https://wa.me/${agent.whatsappNumber}?text=Hello,%20From%20Elitehub`, '_blank');
-    } else {
-        window.location.href = `tel:${agent.phoneNumber}`;
+  const getWhatsAppLink = () => {
+    if (!agent.whatsappNumber) return '';
+    let number = agent.whatsappNumber.replace(/\+/g, '').replace(/\s/g, '');
+    if (number.startsWith('0')) {
+      number = '234' + number.substring(1);
     }
+    return `https://wa.me/${number}?text=Hello,%20From%20Elitehub`;
   };
   
     const uploadToCloudinary = async (file: File) => {
@@ -229,8 +228,6 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
     );
   }
 
-  const contactButtonText = agent.whatsappNumber ? 'WhatsApp' : 'Call Now';
-  const ContactIcon = agent.whatsappNumber ? MessageCircle : Phone;
   const isProfileActive = agent.profileVisibleUntil && new Date(agent.profileVisibleUntil) > new Date();
 
 
@@ -373,14 +370,6 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
                 <div className="space-y-4 pt-6 border-t md:border-t-0 md:border-l md:pl-8">
                      <h3 className="text-xl font-semibold">Contact Information</h3>
                      <div className="space-y-3">
-                         <div className="flex items-center gap-3">
-                            <Phone className="h-5 w-5 text-muted-foreground"/>
-                            <a href={`tel:${agent.phoneNumber}`} className="text-primary hover:underline">{agent.phoneNumber}</a>
-                         </div>
-                         <div className="flex items-center gap-3">
-                            <Mail className="h-5 w-5 text-muted-foreground"/>
-                            <a href={`mailto:${agent.email}`} className="text-primary hover:underline">{agent.email}</a>
-                         </div>
                          {agent.hasPhysicalLocation && agent.address && (
                              <div className="flex items-start gap-3">
                                 <MapPin className="h-5 w-5 text-muted-foreground mt-1"/>
@@ -388,10 +377,25 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
                              </div>
                          )}
                      </div>
-                     <Button className="w-full" onClick={handleContact}>
-                        <ContactIcon className="mr-2 h-4 w-4"/>
-                        {contactButtonText}
-                    </Button>
+                     <div className="flex flex-col gap-2">
+                        <Button asChild className="w-full">
+                           <a href={`tel:${agent.phoneNumber}`}><Phone className="mr-2 h-4 w-4"/> Call Now</a>
+                        </Button>
+                        <Button asChild variant="secondary" className="w-full">
+                             <a href={`mailto:${agent.email}`}><Mail className="mr-2 h-4 w-4"/> Email</a>
+                        </Button>
+                        {agent.whatsappNumber ? (
+                          <Button asChild className="w-full bg-green-600 hover:bg-green-700">
+                             <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer"><MessageCircle className="mr-2 h-4 w-4"/> WhatsApp</a>
+                          </Button>
+                        ) : (
+                          isOwner && (
+                            <div className="text-center text-xs text-muted-foreground p-2 bg-muted rounded-md">
+                                Add your WhatsApp number to activate this button.
+                            </div>
+                          )
+                        )}
+                    </div>
                 </div>
             </div>
 

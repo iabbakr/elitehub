@@ -9,6 +9,7 @@ import * as z from 'zod';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -31,12 +32,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Paperclip } from 'lucide-react';
 import { productCategories, nigerianStates, type Vendor, type Product, createNotification } from '@/lib/data';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 const productFormSchema = z.object({
   name: z.string().min(3, "Product name must be at least 3 characters."),
   price: z.coerce.number().min(1, "Price must be a positive number.").optional(),
   category: z.string({ required_error: "Please select a category."}).min(1, "Please select a category."),
-  description: z.string().min(10, "Description must be at least 10 characters."),
+  description: z.string().min(10, "Description must be at least 10 characters.").max(300, "Description cannot be more than 300 characters."),
   images: z.any(),
   payOnDelivery: z.boolean().optional(),
   type: z.string().optional(),
@@ -311,6 +313,7 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
 
   const selectedCategory = useWatch({ control: form.control, name: 'category' });
   const selectedImages = useWatch({ control: form.control, name: 'images' });
+  const descriptionValue = useWatch({ control: form.control, name: 'description' });
   const fileCount = selectedImages?.length || 0;
   
   const vendorProductCategories = useMemo(() => {
@@ -1267,7 +1270,27 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
             />
             <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder='Name' {...field} /></FormControl><FormMessage /></FormItem> )} />
             <FormField control={form.control} name="price" render={({ field }) => ( <FormItem><FormLabel>Price (₦) {selectedCategory === 'Precious Metals & Minerals' && <span className="text-muted-foreground text-xs">(Optional)</span>}</FormLabel><FormControl><Input type="number" placeholder="5000" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
-            <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="Describe the product's features, materials, etc." rows={5} {...field} /></FormControl><FormMessage /></FormItem> )} />
+            
+            <FormField control={form.control} name="description" render={({ field }) => ( 
+                <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                        <Textarea 
+                            placeholder="Describe the product's features, materials, etc." 
+                            rows={5} 
+                            maxLength={300}
+                            {...field} 
+                        />
+                    </FormControl>
+                    <div className="text-right text-xs text-muted-foreground">
+                       <span className={cn( (descriptionValue?.length || 0) > 300 && "text-destructive" )}>
+                         {descriptionValue?.length || 0}
+                       </span> / 300
+                    </div>
+                    <FormMessage />
+                </FormItem> 
+            )} />
+
             <FormField control={form.control} name="images" render={({ field }) => ( <FormItem><FormLabel>Product Images <span className="text-muted-foreground text-xs">{imageRequirementText}</span></FormLabel><FormControl><Input type="file" accept="image/*" multiple {...imageRef} /></FormControl>{fileCount > 0 && (<div className="text-sm text-muted-foreground flex items-center gap-2"><Paperclip className="h-4 w-4" /><span>{fileCount} image(s) selected.</span></div>)}<FormMessage /></FormItem> )} />
             
             {/* Dynamic Category-Specific Fields */}

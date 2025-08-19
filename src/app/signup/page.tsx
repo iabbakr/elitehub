@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -221,12 +220,6 @@ export default function SignupPage() {
             Already have an account?{" "}
             <Link href="/login" className="font-medium text-primary hover:underline">
               Sign in
-            </Link>
-          </div>
-           <div className="mt-4 text-center text-sm">
-            Want to sell products?{" "}
-            <Link href="/register" className="font-medium text-primary hover:underline">
-              Become a Vendor
             </Link>
           </div>
         </CardContent>

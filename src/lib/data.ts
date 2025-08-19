@@ -1,5 +1,4 @@
 
-
 import { collection, getDocs, doc, getDoc, query, where, addDoc, serverTimestamp, orderBy, increment, limit, writeBatch } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -17,6 +16,7 @@ export type Product = {
   dataAiHint: string;
   payOnDelivery?: boolean;
   viewCount?: number;
+  favoriteCount?: number;
   boostedUntil?: string; // ISO date string
   createdAt?: any;
   
@@ -305,8 +305,8 @@ export type UserData = {
     uid: string;
     fullName: string;
     email: string;
-    createdAt: any;
-    lastLogin?: any;
+    createdAt: string;
+    lastLogin?: string | null;
 };
 
 export type Reply = {
@@ -409,7 +409,15 @@ export async function fetchUsers(): Promise<UserData[]> {
   try {
     const usersCollection = collection(db, 'users');
     const snapshot = await getDocs(usersCollection);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as UserData[];
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate().toISOString() || null,
+            lastLogin: data.lastLogin?.toDate().toISOString() || null
+        } as UserData;
+    });
   } catch (error) {
     console.error("Error fetching users:", error);
     return [];
@@ -604,7 +612,13 @@ export async function fetchUserByUid(uid: string): Promise<UserData | null> {
         const userDocRef = doc(db, 'users', uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
-            return { id: userDoc.id, ...userDoc.data() } as UserData;
+            const data = userDoc.data();
+            return {
+                id: userDoc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate().toISOString() || null,
+                lastLogin: data.lastLogin?.toDate().toISOString() || null
+            } as UserData;
         }
         return null;
     } catch (error) {
@@ -618,7 +632,15 @@ export async function fetchProducts(): Promise<Product[]> {
     try {
         const productsCollection = collection(db, 'products');
         const productSnapshot = await getDocs(productsCollection);
-        const fetchedProducts = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
+        const fetchedProducts = productSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return { 
+                id: doc.id,
+                 ...data,
+                 createdAt: data.createdAt?.toDate()?.toISOString() || null,
+                 boostedUntil: data.boostedUntil || null
+            } as Product;
+        });
         return fetchedProducts;
     } catch (error) {
         console.error("Error fetching products:", error);
@@ -631,7 +653,13 @@ export async function fetchProductById(id: string): Promise<Product | null> {
         const productDocRef = doc(db, 'products', id);
         const productDoc = await getDoc(productDocRef);
         if (productDoc.exists()) {
-            return { id: productDoc.id, ...productDoc.data() } as Product;
+            const data = productDoc.data();
+            return { 
+                id: productDoc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate()?.toISOString() || null,
+                boostedUntil: data.boostedUntil || null
+             } as Product;
         }
         return null;
     } catch (error) {
@@ -644,7 +672,15 @@ export async function fetchProductsByVendorId(vendorId: string): Promise<Product
     try {
         const q = query(collection(db, "products"), where("vendorId", "==", vendorId));
         const querySnapshot = await getDocs(q);
-        const fetchedProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
+        const fetchedProducts = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                 id: doc.id,
+                 ...data,
+                 createdAt: data.createdAt?.toDate()?.toISOString() || null,
+                 boostedUntil: data.boostedUntil || null
+            } as Product;
+        });
         return fetchedProducts;
     } catch (error) {
         console.error("Error fetching products by vendor ID:", error);

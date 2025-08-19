@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { fetchCurrencyExchangeAgentById, fetchCurrencyExchangeAgents } from '@/lib/data';
 import type { Metadata } from 'next';
 import { AgentProfileClientPage } from './AgentProfileClientPage';
+import type { PageProps } from '@/types/page';
 
 export async function generateStaticParams() {
   const agents = await fetchCurrencyExchangeAgents();

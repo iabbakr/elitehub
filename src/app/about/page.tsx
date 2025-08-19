@@ -29,7 +29,7 @@ export default function AboutPage() {
                 The Gold Standard of Nigerian Commerce.
             </h1>
             <p className="mt-4 text-lg text-muted-foreground max-w-3xl mx-auto">
-                EliteHub was born from a simple yet powerful idea: to create a digital marketplace where trust is not an option, but a guarantee. We are a premier referral-based platform dedicated to connecting you with Nigeria's most reliable vendors and professional service providers.
+                EliteHub was born from a simple yet powerful idea: to create a digital marketplace where trust is not an option, but a guarantee. We are a premier platform dedicated to connecting you with Nigeria's most reliable vendors and professional service providers.
             </p>
         </header>
 

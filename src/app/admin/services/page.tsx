@@ -40,7 +40,6 @@ export default function AllServicesPage() {
   const [filter, setFilter] = useState('all');
   const [activeBadges, setActiveBadges] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
-  const [kycReviewModal, setKycReviewModal] = useState<{ isOpen: boolean; agent: KycReviewTarget | null }>({ isOpen: false, agent: null });
 
   const refreshData = async () => {
     setLoading(true);
@@ -66,21 +65,6 @@ export default function AllServicesPage() {
     setActiveBadges(badgeStatus);
   }, [serviceProviders]);
 
-    const handleKycDecision = async (decision: 'verified' | 'rejected') => {
-        if (!kycReviewModal.agent) return;
-
-        const agentRef = doc(db, 'serviceProviders', kycReviewModal.agent.id);
-        
-        try {
-            await updateDoc(agentRef, { kycStatus: decision });
-            toast({ title: 'KYC Status Updated', description: `${kycReviewModal.agent.businessName}'s KYC has been ${decision}.` });
-            setKycReviewModal({ isOpen: false, agent: null });
-            refreshData();
-        } catch (error) {
-            console.error("Error updating KYC status:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update KYC status.' });
-        }
-    };
 
   const handleProviderStatusChange = async (providerId: string, status: 'active' | 'banned') => {
     try {
@@ -175,13 +159,6 @@ export default function AllServicesPage() {
 
   return (
     <div className="space-y-8">
-      <Dialog open={kycReviewModal.isOpen} onOpenChange={(isOpen) => setKycReviewModal({ isOpen, agent: null })}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col"><DialogHeader><DialogTitle>KYC Document Review</DialogTitle><DialogDescription>Review the submitted documents for {kycReviewModal.agent?.businessName} ({kycReviewModal.agent?.email}).</DialogDescription></DialogHeader>
-          <ScrollArea className="flex-grow">{kycReviewModal.agent && (<div className="space-y-4 p-4 pr-6"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>ID Card (Front)</Label><Image src={kycReviewModal.agent.idCardFront!} alt="ID Card Front" width={400} height={250} className="rounded-md border object-contain w-full"/></div><div className="space-y-2"><Label>ID Card (Back)</Label><Image src={kycReviewModal.agent.idCardBack!} alt="ID Card Back" width={400} height={250} className="rounded-md border object-contain w-full"/></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>Passport Photo</Label><Image src={kycReviewModal.agent.passportPhoto!} alt="Passport" width={200} height={200} className="rounded-md border object-contain w-full"/></div><div className="space-y-2"><Label>NIN</Label><p className="text-lg font-mono p-3 bg-muted rounded-md">{kycReviewModal.agent.nin}</p></div></div></div>)}</ScrollArea>
-          <DialogFooter className="flex-shrink-0"><Button variant="destructive" onClick={() => handleKycDecision('rejected')}>Reject</Button><Button className="bg-green-600 hover:bg-green-700" onClick={() => handleKycDecision('verified')}>Approve KYC</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
       <header className="mb-8">
         <h1 className="text-4xl font-bold font-headline tracking-tight text-foreground flex items-center gap-3"><Wrench className="h-10 w-10 text-primary" />Service Provider Management</h1>
         <p className="mt-2 text-lg text-muted-foreground">Oversee all registered service providers.</p>
@@ -202,12 +179,11 @@ export default function AllServicesPage() {
                 <Button onClick={handleEmailAll}><Mail className="mr-2 h-4 w-4" />Email All Visible</Button>
                 <Button onClick={handleCopyAllPhones} variant="outline"><Phone className="mr-2 h-4 w-4" />Copy All Phones</Button>
             </div>
-            <div className="border rounded-md"><Table><TableHeader><TableRow><TableHead>Provider</TableHead><TableHead>Status</TableHead><TableHead>Verification</TableHead><TableHead>KYC</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>{filteredServices.map((provider) => (<TableRow key={provider.id}><TableCell><div className="flex flex-col"><span>{provider.businessName}</span><span className="text-xs text-muted-foreground">{provider.email}</span></div></TableCell><TableCell><Badge variant={provider.status === 'active' ? 'default' : 'destructive'}>{provider.status}</Badge>{provider.tier && (<Badge variant="secondary" className="ml-2 uppercase">{provider.tier}</Badge>)}</TableCell><TableCell>{activeBadges[provider.id] ? (<div className="flex items-center gap-2 text-green-600"><ShieldCheck className="h-5 w-5"/><span className="text-xs">Expires {new Date(provider.badgeExpirationDate!).toLocaleDateString()}</span></div>) : (<span className="text-muted-foreground text-xs">Not Verified</span>)}</TableCell><TableCell><Badge variant={provider.kycStatus === 'verified' ? 'default' : provider.kycStatus === 'pending' ? 'secondary' : 'destructive'} className={cn(provider.kycStatus === 'verified' && 'bg-green-100 text-green-800')}>{provider.kycStatus || 'none'}</Badge></TableCell><TableCell className="text-right">
+            <div className="border rounded-md"><Table><TableHeader><TableRow><TableHead>Provider</TableHead><TableHead>Status</TableHead><TableHead>Verification</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>{filteredServices.map((provider) => (<TableRow key={provider.id}><TableCell><div className="flex flex-col"><span>{provider.businessName}</span><span className="text-xs text-muted-foreground">{provider.email}</span></div></TableCell><TableCell><Badge variant={provider.status === 'active' ? 'default' : 'destructive'}>{provider.status}</Badge>{provider.tier && (<Badge variant="secondary" className="ml-2 uppercase">{provider.tier}</Badge>)}</TableCell><TableCell>{activeBadges[provider.id] ? (<div className="flex items-center gap-2 text-green-600"><ShieldCheck className="h-5 w-5"/><span className="text-xs">Expires {new Date(provider.badgeExpirationDate!).toLocaleDateString()}</span></div>) : (<span className="text-muted-foreground text-xs">Not Verified</span>)}</TableCell><TableCell className="text-right">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild><Link href={`/services/${provider.id}`}><Eye className="mr-2 h-4 w-4" /><span>View Profile</span></Link></DropdownMenuItem>
-                        {provider.idCardFront && <DropdownMenuItem onClick={() => setKycReviewModal({ isOpen: true, agent: provider })}><UserCheck className="mr-2 h-4 w-4" /><span>Review KYC</span></DropdownMenuItem>}
                         <DropdownMenuSeparator />
                         <DropdownMenuSub><DropdownMenuSubTrigger><ShieldCheck className="mr-2 h-4 w-4" /><span>Verification</span></DropdownMenuSubTrigger><DropdownMenuPortal><DropdownMenuSubContent><DropdownMenuItem onClick={() => handleManualBadgeAssign(provider.id, 6)}>6 months</DropdownMenuItem><DropdownMenuItem onClick={() => handleManualBadgeAssign(provider.id, 12)}>12 months</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="text-red-600" onClick={() => handleManualBadgeAssign(provider.id, null)}>Remove</DropdownMenuItem></DropdownMenuSubContent></DropdownMenuPortal></DropdownMenuSub>
                         <DropdownMenuSub><DropdownMenuSubTrigger><Eye className="mr-2 h-4 w-4" /><span>Profile Visibility</span></DropdownMenuSubTrigger><DropdownMenuPortal><DropdownMenuSubContent><DropdownMenuItem onClick={() => handleManualProfileVisibilityAssign(provider.id, 3)}>3 months</DropdownMenuItem><DropdownMenuItem onClick={() => handleManualProfileVisibilityAssign(provider.id, 6)}>6 months</DropdownMenuItem><DropdownMenuItem onClick={() => handleManualProfileVisibilityAssign(provider.id, 12)}>12 months</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="text-red-600" onClick={() => handleManualProfileVisibilityAssign(provider.id, null)}>Remove</DropdownMenuItem></DropdownMenuSubContent></DropdownMenuPortal></DropdownMenuSub>

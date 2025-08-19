@@ -1,4 +1,4 @@
-# Firebase Studio
+# Elitehub Nigeria Marketplace
 
 This is a NextJS starter in Firebase Studio.
 

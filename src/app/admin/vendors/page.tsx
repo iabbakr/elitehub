@@ -40,7 +40,6 @@ export default function AllVendorsPage() {
   const [filter, setFilter] = useState('all');
   const [activeBadges, setActiveBadges] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
-  const [kycReviewModal, setKycReviewModal] = useState<{ isOpen: boolean; agent: KycReviewTarget | null }>({ isOpen: false, agent: null });
 
   const refreshData = async () => {
     setLoading(true);
@@ -65,22 +64,6 @@ export default function AllVendorsPage() {
     });
     setActiveBadges(badgeStatus);
   }, [vendors]);
-
-    const handleKycDecision = async (decision: 'verified' | 'rejected') => {
-        if (!kycReviewModal.agent) return;
-
-        const agentRef = doc(db, 'vendors', kycReviewModal.agent.id);
-        
-        try {
-            await updateDoc(agentRef, { kycStatus: decision });
-            toast({ title: 'KYC Status Updated', description: `${kycReviewModal.agent.name}'s KYC has been ${decision}.` });
-            setKycReviewModal({ isOpen: false, agent: null });
-            refreshData();
-        } catch (error) {
-            console.error("Error updating KYC status:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update KYC status.' });
-        }
-    };
 
   const handleProviderStatusChange = async (providerId: string, status: 'active' | 'banned') => {
     try {
@@ -173,17 +156,12 @@ export default function AllVendorsPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <Dialog open={kycReviewModal.isOpen} onOpenChange={(isOpen) => setKycReviewModal({ isOpen, agent: null })}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col"><DialogHeader><DialogTitle>KYC Document Review</DialogTitle><DialogDescription>Review the submitted documents for {kycReviewModal.agent?.name} ({kycReviewModal.agent?.email}).</DialogDescription></DialogHeader>
-          <ScrollArea className="flex-grow">{kycReviewModal.agent && (<div className="space-y-4 p-4 pr-6"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>ID Card (Front)</Label><Image src={kycReviewModal.agent.idCardFront!} alt="ID Card Front" width={400} height={250} className="rounded-md border object-contain w-full"/></div><div className="space-y-2"><Label>ID Card (Back)</Label><Image src={kycReviewModal.agent.idCardBack!} alt="ID Card Back" width={400} height={250} className="rounded-md border object-contain w-full"/></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>Passport Photo</Label><Image src={kycReviewModal.agent.passportPhoto!} alt="Passport" width={200} height={200} className="rounded-md border object-contain w-full"/></div><div className="space-y-2"><Label>NIN</Label><p className="text-lg font-mono p-3 bg-muted rounded-md">{kycReviewModal.agent.nin}</p></div></div></div>)}</ScrollArea>
-          <DialogFooter className="flex-shrink-0"><Button variant="destructive" onClick={() => handleKycDecision('rejected')}>Reject</Button><Button className="bg-green-600 hover:bg-green-700" onClick={() => handleKycDecision('verified')}>Approve KYC</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold font-headline tracking-tight text-foreground flex items-center gap-3"><Package className="h-10 w-10 text-primary" />Vendor Management</h1>
-        <p className="mt-2 text-lg text-muted-foreground">Oversee all vendors in the marketplace.</p>
+    <div className="space-y-6 md:space-y-8">
+      <header>
+        <h1 className="text-3xl md:text-4xl font-bold font-headline tracking-tight text-foreground flex items-center gap-3">
+          <Package className="h-8 w-8 text-primary" />Vendor Management
+        </h1>
+        <p className="mt-1 text-lg text-muted-foreground">Oversee all vendors in the marketplace.</p>
       </header>
 
       <Card>
@@ -193,37 +171,35 @@ export default function AllVendorsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <Tabs value={filter} onValueChange={setFilter}>
-             <TabsList className="grid w-full grid-cols-4">
+             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="vvip">VVIP</TabsTrigger>
                 <TabsTrigger value="vip">VIP</TabsTrigger>
                 <TabsTrigger value="verified">Verified</TabsTrigger>
             </TabsList>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search by name or email..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
-                <Button onClick={handleEmailAll}><Mail className="mr-2 h-4 w-4" />Email All Visible</Button>
-                <Button onClick={handleCopyAllPhones} variant="outline"><Phone className="mr-2 h-4 w-4" />Copy All Phones</Button>
+                <Button onClick={handleEmailAll}><Mail className="mr-2 h-4 w-4" />Email Visible</Button>
+                <Button onClick={handleCopyAllPhones} variant="outline"><Phone className="mr-2 h-4 w-4" />Copy Phones</Button>
             </div>
             <div className="border rounded-md">
                 <Table>
-                <TableHeader><TableRow><TableHead>Vendor</TableHead><TableHead>Status</TableHead><TableHead>Posts</TableHead><TableHead>Verification</TableHead><TableHead>KYC</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Vendor</TableHead><TableHead className="hidden sm:table-cell">Status</TableHead><TableHead className="hidden md:table-cell">Posts</TableHead><TableHead className="hidden lg:table-cell">Verification</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                     {filteredVendors.map((vendor) => (
                     <TableRow key={vendor.id}>
                         <TableCell className="font-medium"><div className="flex flex-col"><span>{vendor.name}</span><span className="text-xs text-muted-foreground">{vendor.email}</span></div></TableCell>
-                        <TableCell><Badge variant={vendor.status === 'active' ? 'default' : 'destructive'}>{vendor.status}</Badge>{vendor.tier && (<Badge variant="secondary" className="ml-2 uppercase">{vendor.tier}</Badge>)}</TableCell>
-                        <TableCell><span className="text-sm">{vendor.postCount} / {vendor.postLimit === -1 ? 'Unlimited' : vendor.postLimit}</span></TableCell>
-                        <TableCell>{activeBadges[vendor.id] ? (<div className="flex items-center gap-2 text-green-600"><ShieldCheck className="h-5 w-5"/><span className="text-xs">Expires {new Date(vendor.badgeExpirationDate!).toLocaleDateString()}</span></div>) : (<span className="text-muted-foreground text-xs">Not Verified</span>)}</TableCell>
-                        <TableCell><Badge variant={vendor.kycStatus === 'verified' ? 'default' : vendor.kycStatus === 'pending' ? 'secondary' : 'destructive'} className={cn(vendor.kycStatus === 'verified' && 'bg-green-100 text-green-800')}>{vendor.kycStatus || 'none'}</Badge></TableCell>
+                        <TableCell className="hidden sm:table-cell"><Badge variant={vendor.status === 'active' ? 'default' : 'destructive'}>{vendor.status}</Badge>{vendor.tier && (<Badge variant="secondary" className="ml-2 uppercase">{vendor.tier}</Badge>)}</TableCell>
+                        <TableCell className="hidden md:table-cell"><span className="text-sm">{vendor.postCount} / {vendor.postLimit === -1 ? 'Unlimited' : vendor.postLimit}</span></TableCell>
+                        <TableCell className="hidden lg:table-cell">{activeBadges[vendor.id] ? (<div className="flex items-center gap-2 text-green-600"><ShieldCheck className="h-5 w-5"/><span className="text-xs">Expires {new Date(vendor.badgeExpirationDate!).toLocaleDateString()}</span></div>) : (<span className="text-muted-foreground text-xs">Not Verified</span>)}</TableCell>
                         <TableCell className="text-right">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild><Link href={`/admin/products/${vendor.id}`}><Eye className="mr-2 h-4 w-4" /><span>View Products</span></Link></DropdownMenuItem>
-                            {vendor.idCardFront && <DropdownMenuItem onClick={() => setKycReviewModal({ isOpen: true, agent: vendor })}><UserCheck className="mr-2 h-4 w-4" /><span>Review KYC</span></DropdownMenuItem>}
                             <DropdownMenuSeparator />
                             <DropdownMenuSub><DropdownMenuSubTrigger><ShieldCheck className="mr-2 h-4 w-4" /><span>Verification</span></DropdownMenuSubTrigger><DropdownMenuPortal><DropdownMenuSubContent><DropdownMenuItem onClick={() => handleManualBadgeAssign(vendor.id, 3)}>3 months</DropdownMenuItem><DropdownMenuItem onClick={() => handleManualBadgeAssign(vendor.id, 6)}>6 months</DropdownMenuItem><DropdownMenuItem onClick={() => handleManualBadgeAssign(vendor.id, 12)}>12 months</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="text-red-600" onClick={() => handleManualBadgeAssign(vendor.id, null)}>Remove</DropdownMenuItem></DropdownMenuSubContent></DropdownMenuPortal></DropdownMenuSub>
                             <DropdownMenuSub><DropdownMenuSubTrigger><Gem className="mr-2 h-4 w-4" /><span>VIP/VVIP</span></DropdownMenuSubTrigger><DropdownMenuPortal><DropdownMenuSubContent><DropdownMenuItem onClick={() => handleManualTierAssign(vendor.id, 'vip')}><Crown className="mr-2 h-4 w-4" />Assign VIP</DropdownMenuItem><DropdownMenuItem onClick={() => handleManualTierAssign(vendor.id, 'vvip')}><Gem className="mr-2 h-4 w-4" />Assign VVIP</DropdownMenuItem><DropdownMenuItem onClick={() => handleManualTierAssign(vendor.id, null)}><XCircle className="mr-2 h-4 w-4" />Remove</DropdownMenuItem></DropdownMenuSubContent></DropdownMenuPortal></DropdownMenuSub>

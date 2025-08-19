@@ -5,8 +5,9 @@ import { cn } from "@/lib/utils";
 import { ClientLayout } from "@/components/layout/ClientLayout";
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.elitehubng.com'),
   title: "Elitehub Marketplace",
-  description: "A marketplace for the elite.",
+  description: "A referral-based marketplace for the elite.",
 };
 
 export default function RootLayout({
@@ -28,7 +29,7 @@ export default function RootLayout({
       </head>
       <body
         className={cn(
-          "font-body antialiased bg-background flex flex-col min-h-screen"
+          "font-body antialiased bg-background flex flex-col h-full"
         )}
       >
         <ClientLayout>{children}</ClientLayout>

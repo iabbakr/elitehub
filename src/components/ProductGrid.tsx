@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -29,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import type { Product, Vendor } from '@/lib/data';
 import { createTransaction, createNotification } from '@/lib/data';
-import { Star, ShieldCheck, MoreVertical, Edit, Trash2, EyeOff, Eye, Heart, TrendingUp, Zap, Crown, Gem, BadgeCheck, MapPin } from 'lucide-react';
+import { Star, Building, MoreVertical, Edit, Trash2, EyeOff, Eye, Heart, TrendingUp, Zap, Crown, Gem, BadgeCheck, MapPin, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -37,7 +36,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { usePaystackPayment } from 'react-paystack';
 import { add } from 'date-fns';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
   Tooltip,
@@ -45,6 +44,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import type { ViewMode } from './ViewToggle';
 
 
 interface ProductGridProps {
@@ -52,10 +52,15 @@ interface ProductGridProps {
     vendors?: Vendor[];
     showAdminControls?: boolean;
     isVendorOwnerView?: boolean;
+    viewMode?: ViewMode;
     onEdit?: (product: Product) => void;
     onToggleStatus?: (product: Product) => void;
     onDelete?: (productId: string) => void;
 }
+
+const dispatchStorageEvent = () => {
+    window.dispatchEvent(new Event("storage"));
+};
 
 const boostPlans = [
     { duration: 'week', days: 7, price: 3000, label: 'Boost for 1 Week' },
@@ -63,7 +68,7 @@ const boostPlans = [
     { duration: 'month', days: 30, price: 10000, label: 'Boost for 1 Month' },
 ];
 
-export function ProductGrid({ products: initialProducts, vendors, showAdminControls = false, isVendorOwnerView = false, onEdit, onToggleStatus, onDelete }: ProductGridProps) {
+export function ProductGrid({ products: initialProducts, vendors, showAdminControls = false, isVendorOwnerView = false, viewMode = 'grid', onEdit, onToggleStatus, onDelete }: ProductGridProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
@@ -89,7 +94,7 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
     return new Date(v.badgeExpirationDate) > new Date();
   };
 
-  const handleAddToFavorites = (e: React.MouseEvent, product: Product) => {
+  const handleAddToFavorites = async (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -102,6 +107,14 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
         router.push('/login');
         return;
     }
+
+    if (isVendorOwnerView) {
+        toast({
+            title: "Action Not Allowed",
+            description: "You cannot favorite your own products.",
+        });
+        return;
+    }
     
     const currentFavorites: Product[] = JSON.parse(localStorage.getItem('user-favorites') || '[]');
     
@@ -112,6 +125,12 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
     
     const newFavorites = [...currentFavorites, product];
     localStorage.setItem('user-favorites', JSON.stringify(newFavorites));
+    dispatchStorageEvent();
+    
+    // Increment favorite count on the product
+    const productRef = doc(db, 'products', product.id);
+    await updateDoc(productRef, { favoriteCount: increment(1) });
+    
     toast({
         title: "Added to Favorites!",
         description: `${product.name} has been saved.`,
@@ -208,16 +227,56 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
   return (
     <div>
       {products.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className={cn(
+          "gap-3 sm:gap-6",
+          viewMode === 'grid' 
+            ? (isVendorOwnerView 
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
+                : "grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4") 
+            : "space-y-4"
+        )}>
           {products.map((product) => {
             const vendor = getVendor(product.vendorId);
+            if (viewMode === 'list') {
+              return (
+                <Card key={product.id} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-2 sm:p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <Link href={`/products/${product.id}`}>
+                                <Image src={product.images[0]} alt={product.name} width={80} height={80} className="rounded-md object-cover" data-ai-hint={product.dataAiHint}/>
+                            </Link>
+                            <div className="text-sm">
+                                <Link href={`/products/${product.id}`} className="font-bold hover:underline">{product.name}</Link>
+                                <p className="text-xs text-muted-foreground">{product.category}</p>
+                                {vendor && (
+                                     <Link href={`/vendors/${vendor.id}`} className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 mt-1">
+                                        <Building className="h-3 w-3" />
+                                        <span>{vendor.name}</span>
+                                        {isBadgeActive(vendor) && <BadgeCheck className="h-3 w-3 text-green-500" />}
+                                        {vendor.tier === 'vip' && <Crown className="h-3 w-3 text-yellow-500"/>}
+                                        {vendor.tier === 'vvip' && <Gem className="h-3 w-3 text-purple-500"/>}
+                                    </Link>
+                                )}
+                                <p className="text-base font-semibold text-primary mt-1">₦{product.price?.toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                            <Button asChild size="sm">
+                                <Link href={`/products/${product.id}`}>View</Link>
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+              )
+            }
             return (
             <Card key={product.id} className={cn(
                 "overflow-hidden flex flex-col group transform hover:-translate-y-1 transition-transform duration-300 shadow-lg hover:shadow-xl rounded-xl",
-                product.status === 'closed' && 'bg-muted/50'
+                product.status === 'closed' && 'bg-muted/50',
+                isVendorOwnerView && 'sm:col-span-1'
             )}>
               <CardContent className="p-0 flex-grow flex flex-col">
-                <div className="relative h-48 bg-muted/30">
+                <div className="relative aspect-square bg-muted/30">
                   <Link href={`/products/${product.id}`} className="block h-full">
                     <Image
                       src={product.images[0]}
@@ -229,6 +288,11 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
                     />
                   </Link>
                   <div className="absolute top-2 left-2 space-y-1">
+                    {product.condition && (
+                        <Badge className={cn(product.condition === 'new' ? "bg-blue-600" : "bg-orange-600", "text-white")} variant="secondary">
+                           <Tag className="mr-1 h-3 w-3" /> {product.condition === 'new' ? 'Brand New' : 'Used'}
+                        </Badge>
+                    )}
                     {isProductBoosted(product) && (
                         <Badge className="bg-purple-600 text-white" variant="secondary">
                             <Zap className="mr-1 h-3 w-3" /> Boosted
@@ -307,83 +371,84 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
                     </div>
                   )}
                 </div>
-                <div className="p-4 flex flex-col flex-grow">
-                  <Link href={`/products/${product.id}`} className="hover:text-primary">
-                    <h3 className="text-base font-semibold font-headline text-foreground truncate">{product.name}</h3>
-                  </Link>
-                  {product.category === 'Property' && product.address && (
-                        <p className="text-xs text-muted-foreground mt-1 truncate">{product.address}</p>
-                   )}
-                   {product.category === 'Fashion' && product.size && (
-                     <p className="text-xs text-muted-foreground mt-1">Size: {product.size}</p>
-                   )}
-                   {product.condition && product.category !== 'Property' && product.category !== 'Fashion' && (
-                     <Badge variant={product.condition === 'new' ? 'default' : 'secondary'} className="w-fit mt-2 capitalize">
-                       {product.condition === 'new' ? 'Brand New' : product.condition}
-                     </Badge>
-                   )}
-                   <div className="text-xs text-muted-foreground mt-1">
-                     {loadingVendors ? (
-                       <Skeleton className="h-4 w-24" />
-                     ) : (
-                       <Link href={`/vendors/${product.vendorId}`} className="hover:text-primary transition-colors flex items-center gap-1.5">
-                         {vendor?.name || 'Vendor'}
-                         {isBadgeActive(vendor) && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <BadgeCheck className="h-4 w-4 text-green-500" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Verified Vendor</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                         )}
-                       </Link>
-                     )}
-                   </div>
-                  <div className="flex items-center mt-2">
-                    <div className="flex items-center gap-0.5 text-yellow-500">
-                        {[...Array(5)].map((_, i) => (
-                            <Star key={i} className={`h-4 w-4 ${i < Math.round(product.rating) ? 'fill-current' : 'text-gray-300'}`} />
-                        ))}
-                    </div>
-                    <span className="ml-2 text-xs text-muted-foreground">({product.reviewsCount})</span>
+                <div className="p-3 md:p-4 flex flex-col flex-grow">
+                  <div className="flex-grow">
+                      <Link href={`/products/${product.id}`} className="hover:text-primary">
+                        <h3 className="text-sm sm:text-base font-semibold font-headline text-foreground truncate">{product.name}</h3>
+                      </Link>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {loadingVendors ? (
+                          <Skeleton className="h-4 w-24" />
+                        ) : (
+                          <Link href={`/vendors/${product.vendorId}`} className="hover:text-primary transition-colors flex items-center gap-1.5">
+                            <Building className="h-3 w-3" />
+                            {vendor?.name || 'Vendor'}
+                            {isBadgeActive(vendor) && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <BadgeCheck className="h-4 w-4 text-green-500" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Verified Vendor</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                            )}
+                          </Link>
+                        )}
+                      </div>
+                      
+                      {vendor && (
+                        <div className="flex items-center mt-2 text-xs text-muted-foreground">
+                            <MapPin className="h-4 w-4 mr-1.5" />
+                            <span>{vendor.city}, {vendor.location}</span>
+                        </div>
+                      )}
+                      
+                      {isVendorOwnerView && (
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                            <div className="flex items-center">
+                                <Eye className="h-4 w-4 mr-1.5" />
+                                <span>{product.viewCount || 0} views</span>
+                            </div>
+                            <div className="flex items-center">
+                                <Heart className="h-4 w-4 mr-1.5" />
+                                <span>{product.favoriteCount || 0} favorites</span>
+                            </div>
+                        </div>
+                      )}
                   </div>
-                  {isVendorOwnerView && (
-                    <div className="flex items-center text-sm text-muted-foreground mt-2">
-                        <Eye className="h-4 w-4 mr-1.5" />
-                        <span>{product.viewCount || 0} views</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between items-end pt-2 mt-2">
+                    <p className="text-lg sm:text-xl font-bold text-primary">₦{product.price?.toLocaleString()}</p>
+                    {!isVendorOwnerView && (
+                      <Button size="icon" variant="ghost" className="rounded-full h-8 w-8" onClick={(e) => handleAddToFavorites(e, product)}>
+                          <Heart className="h-4 w-4 text-muted-foreground"/>
+                          <span className="sr-only">Favorite</span>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
-              <CardFooter className="p-4 flex justify-between items-center">
-                <p className="text-xl font-bold text-primary">₦{product.price?.toLocaleString()}</p>
-                {isVendorOwnerView ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="sm" disabled={!!(product.status === 'closed' || isProductBoosted(product))}>
-                            <TrendingUp className="mr-2 h-4 w-4"/>
-                            {isProductBoosted(product) ? 'Boosted' : 'Boost'}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuLabel>Boost Options</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {boostPlans.map(plan => (
-                             <BoostPaymentButton key={plan.duration} product={product} plan={plan} />
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                ) : (
-                    <Button size="sm" onClick={(e) => handleAddToFavorites(e, product)} disabled={product.status === 'closed'}>
-                        <Heart className="mr-2 h-4 w-4"/>
-                        Favorite
-                    </Button>
-                )}
-              </CardFooter>
+               {isVendorOwnerView && (
+                  <CardFooter className="p-2 sm:p-4 mt-auto">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" className="w-full" disabled={!!(product.status === 'closed' || isProductBoosted(product))}>
+                              <TrendingUp className="mr-2 h-4 w-4"/>
+                              {isProductBoosted(product) ? 'Boosted' : 'Boost'}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuLabel>Boost Options</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {boostPlans.map(plan => (
+                              <BoostPaymentButton key={plan.duration} product={product} plan={plan} />
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                  </CardFooter>
+               )}
             </Card>
           )})}
         </div>

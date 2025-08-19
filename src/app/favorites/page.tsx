@@ -14,6 +14,10 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
+const dispatchStorageEvent = () => {
+    window.dispatchEvent(new Event("storage"));
+};
+
 export default function FavoritesPage() {
   const [favoriteItems, setFavoriteItems] = useState<Product[]>([]);
   const { toast } = useToast();
@@ -44,6 +48,7 @@ export default function FavoritesPage() {
     const newFavorites = favoriteItems.filter(item => item.id !== id);
     setFavoriteItems(newFavorites);
     localStorage.setItem('user-favorites', JSON.stringify(newFavorites));
+    dispatchStorageEvent();
     toast({
         title: 'Removed from Favorites',
     });
@@ -52,6 +57,7 @@ export default function FavoritesPage() {
   const handleClearAll = () => {
     setFavoriteItems([]);
     localStorage.removeItem('user-favorites');
+    dispatchStorageEvent();
      toast({
         title: 'Favorites Cleared',
         description: 'All your saved items have been removed.',

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Image from 'next/image';
@@ -172,6 +171,15 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
     return new Date(v.badgeExpirationDate) > new Date();
   };
 
+  const getWhatsAppLink = () => {
+    if (!localVendor?.whatsappNumber) return '';
+    let number = localVendor.whatsappNumber.replace(/\+/g, '').replace(/\s/g, '');
+    if (number.startsWith('0')) {
+      number = '234' + number.substring(1);
+    }
+    return `https://wa.me/${number}`;
+  };
+
   return (
     <div className="space-y-8">
       {/* Banner and Profile Header */}
@@ -198,7 +206,7 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
             />
             <div className="text-center md:text-left mt-4 md:mt-0">
               <div className="flex items-center justify-center md:justify-start gap-2">
-                <h1 className="text-3xl md:text-4xl font-bold font-headline">{localVendor.name}</h1>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-headline">{localVendor.name}</h1>
                  {isBadgeActive(localVendor) && (
                   <BadgeCheck className="h-8 w-8 text-green-500" />
                 )}
@@ -293,7 +301,7 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
                 </Button>
                 {localVendor.whatsappNumber ? (
                     <Button asChild className="flex-1 bg-green-600 hover:bg-green-700">
-                         <a href={`https://wa.me/${localVendor.whatsappNumber}`} target="_blank" rel="noopener noreferrer">
+                         <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer">
                             <MessageSquare className="mr-2 h-4 w-4" /> WhatsApp
                         </a>
                     </Button>

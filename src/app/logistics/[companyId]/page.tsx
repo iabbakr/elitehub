@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { fetchLogisticsCompanyById, fetchLogisticsCompanies } from '@/lib/data';
 import type { Metadata } from 'next';
 import { CompanyProfileClientPage } from './CompanyProfileClientPage';
+import type { PageProps } from '@/types/page';
 
 export async function generateStaticParams() {
   const companies = await fetchLogisticsCompanies();

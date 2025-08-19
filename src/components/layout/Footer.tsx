@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from 'next/link';
@@ -53,10 +52,10 @@ export function Footer() {
 
   const footerLinks = {
     'Need Help?': [
-      { href: '/messages', text: 'Chat with us' },
-      { href: 'mailto:elitehubng@gmail.com', text: 'Contact Us' },
+      { href: '/contact', text: 'Contact Us' },
       { href: '/how-to-sell', text: 'How to become a vendor and sell on Elitehub?' },
       { href: '/how-to-shop', text: 'How to shop on Elitehub?' },
+      { href: '/how-to-register-services', text: 'How to register for other services on Elitehub?' },
     ],
     'ABOUT ELITEHUB': [
       { href: '/about', text: 'About us' },

@@ -8,6 +8,7 @@ import { ProductGrid } from '@/components/ProductGrid';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { ViewToggle, type ViewMode } from '@/components/ViewToggle';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -17,6 +18,7 @@ export default function CategoryPage() {
   const [allVendors, setAllVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   const category = useMemo(() => {
     return productCategories.find(c => c.id === categoryId);
@@ -50,15 +52,34 @@ export default function CategoryPage() {
     if (searchTerm) {
         categoryProducts = categoryProducts.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }
+    const getVendor = (vendorId: string) => allVendors.find(v => v.id === vendorId);
 
-    // Then, separate and sort boosted products within that category
-    const boostedProducts = categoryProducts.filter(p => p.boostedUntil && new Date(p.boostedUntil) > new Date());
-    const regularProducts = categoryProducts.filter(p => !p.boostedUntil || new Date(p.boostedUntil) <= new Date());
-    
-    boostedProducts.sort((a, b) => new Date(b.boostedUntil!).getTime() - new Date(a.boostedUntil!).getTime());
-    
-    return [...boostedProducts, ...regularProducts];
-  }, [allProducts, category, searchTerm]);
+    // Then, sort the filtered products
+    categoryProducts.sort((a, b) => {
+        const vendorA = getVendor(a.vendorId);
+        const vendorB = getVendor(b.vendorId);
+
+        const tierOrder = { 'vvip': 4, 'vip': 3 };
+        const tierA = vendorA?.tier ? tierOrder[vendorA.tier as keyof typeof tierOrder] || 0 : 0;
+        const tierB = vendorB?.tier ? tierOrder[vendorB.tier as keyof typeof tierOrder] || 0 : 0;
+
+        if (tierB !== tierA) return tierB - tierA; // Sort by tier first
+
+        const boostedA = a.boostedUntil && new Date(a.boostedUntil) > new Date() ? 2 : 0;
+        const boostedB = b.boostedUntil && new Date(b.boostedUntil) > new Date() ? 2 : 0;
+
+        if (boostedB !== boostedA) return boostedB - boostedA; // Then by boost status
+
+        const verifiedA = vendorA?.isVerified ? 1 : 0;
+        const verifiedB = vendorB?.isVerified ? 1 : 0;
+
+        if (verifiedB !== verifiedA) return verifiedB - verifiedA; // Then by verified status
+
+        return 0; // Keep original order if all else is equal
+    });
+
+    return categoryProducts;
+  }, [allProducts, allVendors, category, searchTerm]);
 
   if (!category && !loading) {
     notFound();
@@ -74,15 +95,18 @@ export default function CategoryPage() {
           Browsing all products in the {category?.name.toLowerCase()} category.
         </p>
       </header>
-
-      <div className="relative max-w-lg mx-auto mb-8">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder={`Search in ${category?.name}...`}
-          className="pl-10"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      
+      <div className="flex flex-col sm:flex-row gap-4 items-center">
+        <div className="relative w-full sm:max-w-lg mx-auto flex-grow">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+            placeholder={`Search in ${category?.name}...`}
+            className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
+        <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
       </div>
       
       <section>
@@ -97,7 +121,7 @@ export default function CategoryPage() {
                   ))}
               </div>
           ) : (
-            <ProductGrid products={filteredProducts} vendors={allVendors} />
+            <ProductGrid products={filteredProducts} vendors={allVendors} viewMode={viewMode} />
           )}
         </section>
     </div>

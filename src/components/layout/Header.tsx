@@ -80,6 +80,7 @@ export function Header() {
   const [providerInfo, setProviderInfo] = useState<{type: ProviderType, id: string | null}>({type: null, id: null});
   const [isProviderOrHasPendingApp, setIsProviderOrHasPendingApp] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [favoriteCount, setFavoriteCount] = useState(0);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -92,6 +93,24 @@ export function Header() {
     'currency-exchange': { profile: `/currency-exchange/${providerInfo.id}`, dashboard: `/currency-exchange/${providerInfo.id}` },
     service: { profile: `/services/${providerInfo.id}`, dashboard: `/services/${providerInfo.id}` },
   };
+
+  useEffect(() => {
+    const updateFavoriteCount = () => {
+        const storedFavorites = localStorage.getItem('user-favorites');
+        if (storedFavorites) {
+            setFavoriteCount(JSON.parse(storedFavorites).length);
+        } else {
+            setFavoriteCount(0);
+        }
+    };
+    
+    updateFavoriteCount(); // Initial count
+    
+    window.addEventListener('storage', updateFavoriteCount);
+    return () => {
+        window.removeEventListener('storage', updateFavoriteCount);
+    };
+  }, []);
 
   useEffect(() => {
     const checkUserRoles = async () => {
@@ -166,7 +185,7 @@ export function Header() {
         <>
             <Link href={providerLinks[providerInfo.type]?.dashboard || '/profile'} className="flex items-center p-2 text-lg font-medium transition-colors hover:text-primary" onClick={() => setIsMenuOpen(false)}>
                 <UserIcon className="mr-2 h-5 w-5" />
-                <span>My Dashboard</span>
+                <span>My Profile</span>
             </Link>
             {providerInfo.type === 'vendor' &&
               <>
@@ -265,8 +284,13 @@ export function Header() {
 
           <div className="flex items-center gap-2">
             <Link href="/favorites">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="relative">
                 <Heart className="h-5 w-5" />
+                {user && favoriteCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                        {favoriteCount}
+                    </span>
+                )}
                 <span className="sr-only">Favorites</span>
               </Button>
             </Link>
@@ -321,7 +345,7 @@ export function Header() {
                       <DropdownMenuItem asChild>
                          <Link href={providerLinks[providerInfo.type]?.dashboard || '/profile'}>
                             <UserIcon className="mr-2 h-4 w-4" />
-                            <span>My Dashboard</span>
+                            <span>My Profile</span>
                           </Link>
                       </DropdownMenuItem>
                        {providerInfo.type === 'vendor' && (
