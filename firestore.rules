@@ -1,113 +1,161 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check for admin role
+    
+    // Helper function to check for Admin role
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'admin@elitehub.com';
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'your-actual-admin@email.com';
     }
-    
-    // Helper function to check if user is the owner of a document
-    function isOwner(resourceId) {
-      return request.auth.uid == resourceId;
+
+    // Helper function to check if a user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
     }
-    
-    // Helper function to get a provider document by UID
-    function getProvider(collectionName, uid) {
-        return get(/databases/$(database)/documents/$(collectionName)/$(uid));
+
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
-    
-    // Users collection rules
+
+    // Helper function to check if user owns a provider document
+    function isProviderOwner(collectionName, providerId) {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/$(collectionName)/$(providerId)) &&
+             get(/databases/$(database)/documents/$(collectionName)/$(providerId)).data.uid == request.auth.uid;
+    }
+
+    // Users can only read and write their own data
     match /users/{userId} {
-      // Anyone can create their own user document (on signup)
-      allow create: if request.auth.uid == userId;
-      // Users can only read/update their own data, admins can read any
-      allow read, update: if isOwner(userId) || isAdmin();
-      // Only admins can delete users
-      allow delete: if isAdmin();
-    }
-    
-    // Generic rules for provider applications
-    match /{appCollection}/{appId} where appCollection in ['vendorApplications', 'lawyerApplications', 'logisticsApplications', 'currencyExchangeApplications', 'serviceProviderApplications'] {
-      // Logged-in users can create applications for themselves
-      allow create: if request.auth.uid == request.resource.data.uid;
-      // Only admins can manage applications
-      allow read, update, delete: if isAdmin();
-    }
-    
-    // Generic rules for all provider types
-    match /{providerCollection}/{providerId} where providerCollection in ['vendors', 'lawyers', 'logisticsCompanies', 'currencyExchangeAgents', 'serviceProviders'] {
-      // Anyone can read public provider profiles
-      allow read: if true;
-      // Admins can create providers (manual approval)
-      allow create: if isAdmin();
-      // Owner of the profile or an admin can update
-      allow update: if isOwner(resource.data.uid) || isAdmin();
-      // Only admins can delete
-      allow delete: if isAdmin();
+      allow read, update, delete: if isOwner(userId) || isAdmin();
+      allow create: if isSignedIn();
     }
 
-    // Products collection rules
+    // Products can be read by anyone, but only created/updated/deleted by the vendor owner or admin
     match /products/{productId} {
-      // Anyone can read products
       allow read: if true;
-      // Vendor can create product if they own the vendor profile
-      allow create: if get(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)).data.uid == request.auth.uid;
-      // Vendor can update/delete their own products, or an admin can
-      allow update, delete: if get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.uid == request.auth.uid || isAdmin();
+      allow create: if isSignedIn() && 
+                       exists(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)) &&
+                       get(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)).data.uid == request.auth.uid;
+      allow update, delete: if isSignedIn() && 
+                               (get(/databases/$(database)/documents/products/$(productId)).data.vendorId == request.auth.uid || isAdmin());
 
-      // Rules for reviews subcollection
+      // Reviews and replies
       match /reviews/{reviewId} {
-        // Anyone can read reviews
         allow read: if true;
-        // Any authenticated user can create a review
-        allow create: if request.auth != null;
-        // Only the author or an admin can update/delete
-        allow update, delete: if isOwner(resource.data.authorId) || isAdmin();
-        
-        // Rules for replies subcollection within a review
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn() && 
+                                 (get(/databases/$(database)/documents/products/$(productId)/reviews/$(reviewId)).data.userId == request.auth.uid || isAdmin());
+
         match /replies/{replyId} {
           allow read: if true;
-          // Authenticated users can reply
-          allow create: if request.auth != null;
-          // Only the author or an admin can update/delete
-          allow update, delete: if isOwner(resource.data.authorId) || isAdmin();
+          allow create: if isSignedIn();
+          allow update, delete: if isSignedIn() && 
+                                   (get(/databases/$(database)/documents/products/$(productId)/reviews/$(reviewId)/replies/$(replyId)).data.userId == request.auth.uid || isAdmin());
         }
       }
     }
-    
-    // Notifications collection rules
-    match /notifications/{notificationId} {
-      // Only the recipient can read/update their notification
-      allow read, update: if isOwner(resource.data.recipientId);
-      // Server-side logic or trusted clients create notifications, so no client-side create rule needed for security.
-      // Admin can delete if necessary
+
+    // Vendors
+    match /vendors/{vendorId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isProviderOwner('vendors', vendorId) || isAdmin();
       allow delete: if isAdmin();
-      allow create: if request.auth != null; // Allow creation from server functions or authenticated users for now
+    }
+
+    // Lawyers
+    match /lawyers/{lawyerId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isProviderOwner('lawyers', lawyerId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Logistics Companies
+    match /logisticsCompanies/{companyId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isProviderOwner('logisticsCompanies', companyId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Currency Exchange Agents
+    match /currencyExchangeAgents/{agentId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isProviderOwner('currencyExchangeAgents', agentId) || isAdmin();
+      allow delete: if isAdmin();
     }
     
-    // Chat collection rules
+    // Service Providers
+    match /serviceProviders/{providerId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isProviderOwner('serviceProviders', providerId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Application collections
+    match /vendorApplications/{appId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+    
+    match /lawyerApplications/{appId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+    
+    match /logisticsApplications/{appId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+    
+    match /currencyExchangeApplications/{appId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+    
+    match /serviceProviderApplications/{appId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Chats are private between participants
     match /chats/{chatRoomId} {
-      // Only participants of the chat can read/write the chat room document
-      allow read, update, create: if request.auth.uid in resource.data.participantIds;
+      allow read, write: if isSignedIn() && 
+                            exists(/databases/$(database)/documents/chats/$(chatRoomId)) &&
+                            request.auth.uid in get(/databases/$(database)/documents/chats/$(chatRoomId)).data.participantIds;
       
-      // Messages subcollection rules
       match /messages/{messageId} {
-        // Only participants can read messages
-        allow read: if request.auth.uid in get(/databases/$(database)/documents/chats/$(chatRoomId)).data.participantIds;
-        // Only participants can send messages
-        allow create: if request.auth.uid == request.resource.data.senderId && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatRoomId)).data.participantIds;
+        allow read, write: if isSignedIn() && 
+                             exists(/databases/$(database)/documents/chats/$(chatRoomId)) &&
+                             request.auth.uid in get(/databases/$(database)/documents/chats/$(chatRoomId)).data.participantIds;
       }
     }
     
-    // Transaction history rules
+    // Notifications are private to the recipient
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isSignedIn() && 
+                                     exists(/databases/$(database)/documents/notifications/$(notificationId)) &&
+                                     isOwner(get(/databases/$(database)/documents/notifications/$(notificationId)).data.recipientId);
+      allow create: if isSignedIn();
+    }
+    
+    // Transactions can be read by the related provider or an admin
     match /transactions/{transactionId} {
-        // Only admins can read all transactions. Specific user/vendor access should be handled by backend queries.
-        allow read, delete: if isAdmin();
-        // Transactions should be created server-side after payment verification.
-        allow create: if request.auth != null;
+      allow read: if isSignedIn() && 
+                     exists(/databases/$(database)/documents/transactions/$(transactionId)) &&
+                     (isOwner(get(/databases/$(database)/documents/transactions/$(transactionId)).data.vendorId) || isAdmin());
+      allow create: if isSignedIn(); // Allow authenticated users to create transactions
+      allow update, delete: if isAdmin();
     }
   }
 }
