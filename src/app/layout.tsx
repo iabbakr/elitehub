@@ -1,16 +1,27 @@
 
 import type { Metadata } from "next";
-import "../app/global.css";
+import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ClientLayout } from "@/components/layout/ClientLayout";
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.elitehubng.com'),
-  title: "Elitehub Nigeria Marketplace",
-  description: "The premier marketplace for verified vendors and professionals in Nigeria.",
+  title: {
+    default: "EliteHub Nigeria - Premier Marketplace for Verified Vendors",
+    template: "%s | EliteHub NG"
+  },
+  description: "Welcome to EliteHub Nigeria (elitehub.ng), the premier marketplace for verified vendors and professionals in Nigeria. Shop with confidence at the elitehub nigeria marketplace.",
+  keywords: [
+    'elitehub',
+    'elitehubng',
+    'elitehub nigeria',
+    'elitehub nigeria marketplace',
+    'verified vendors nigeria',
+    'buy and sell nigeria',
+    'trusted marketplace nigeria',
+    'professional services nigeria'
+  ]
 };
-
-
 
 export default function RootLayout({
   children,
