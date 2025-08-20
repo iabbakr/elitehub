@@ -52,7 +52,7 @@ export function Footer() {
 
   const footerLinks = {
     'MAKE MONEY WITH ELITEHUB': [
-      ...(!isProvider ? [{ href: '/register', text: 'Sell on Elitehub' }] : []),
+      ...(!isProvider ? [{ href: '/register', text: 'Become a Vendor' }] : []),
       ...(!isProvider ? [{ href: '/register-logistics', text: 'Become a Logistics Partner' }] : []),
       ...(!isProvider ? [{ href: '/register-lawyer', text: 'Become a Lawyer' }] : []),
       ...(!isProvider ? [{ href: '/register-service', text: 'Become a Service Provider' }] : []),
