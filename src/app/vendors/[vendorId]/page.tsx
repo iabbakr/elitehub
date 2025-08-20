@@ -3,7 +3,10 @@ import { notFound } from 'next/navigation';
 import { fetchVendorById, fetchProductsByVendorId, fetchVendors, type Vendor, type Product } from '@/lib/data';
 import type { Metadata } from 'next';
 import { VendorProfilePageClient } from './VendorProfilePageClient';
-import type { PageProps } from '@/types/page';
+
+interface VendorProfilePageProps {
+  params: { vendorId: string };
+}
 
 export async function generateStaticParams() {
   const vendors = await fetchVendors();
@@ -12,7 +15,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: PageProps<{ vendorId: string }>): Promise<Metadata> {
+export async function generateMetadata({ params }: VendorProfilePageProps): Promise<Metadata> {
   const vendor = await fetchVendorById(params.vendorId);
 
   if (!vendor) {
@@ -50,7 +53,7 @@ export async function generateMetadata({ params }: PageProps<{ vendorId: string 
 }
 
 
-export default async function VendorProfilePage({ params }: PageProps<{ vendorId: string }>) {
+export default async function VendorProfilePage({ params }: VendorProfilePageProps) {
   const [vendor, vendorProducts] = await Promise.all([
     fetchVendorById(params.vendorId),
     fetchProductsByVendorId(params.vendorId)

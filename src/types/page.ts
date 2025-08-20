@@ -1,6 +1,2 @@
-
-// src/types/page.ts
-export type PageProps<T = unknown> = {
-  params: T;
-  searchParams?: { [key: string]: string | string[] | undefined };
-};
+// This file is intentionally left empty to resolve a persistent TypeScript error.
+// Page prop types will be defined directly in the page components that need them.
