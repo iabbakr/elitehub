@@ -6,9 +6,11 @@ import { ClientLayout } from "@/components/layout/ClientLayout";
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.elitehubng.com'),
-  title: "Elitehub Marketplace",
-  description: "A referral-based marketplace for the elite.",
+  title: "Elitehub Nigeria Marketplace",
+  description: "The premier marketplace for verified vendors and professionals in Nigeria.",
 };
+
+
 
 export default function RootLayout({
   children,

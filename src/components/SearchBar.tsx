@@ -64,7 +64,7 @@ export function SearchBar({ vendors, products, categories, onFilterChange }: Sea
                  <div className="relative w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search by product name..."
+                        placeholder="Looking for"
                         className="pl-10 h-12 text-base"
                         value={productName}
                         onChange={(e) => setProductName(e.target.value)}
