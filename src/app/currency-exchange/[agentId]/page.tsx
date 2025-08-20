@@ -1,63 +1,67 @@
 
 import { notFound } from 'next/navigation';
-import { fetchLogisticsCompanyById, fetchLogisticsCompanies } from '@/lib/data';
+import { fetchCurrencyExchangeAgentById, fetchCurrencyExchangeAgents } from '@/lib/data';
 import type { Metadata } from 'next';
-import { CompanyProfileClientPage } from './CompanyProfileClientPage';
+import { AgentProfileClientPage } from './AgentProfileClientPage';
 
-interface CompanyProfilePageProps {
-  params: { companyId: string };
+interface CurrencyExchangeAgentProfilePageProps {
+  params: { agentId: string };
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
 export async function generateStaticParams() {
-  const companies = await fetchLogisticsCompanies();
-  return companies.map((company) => ({
-    companyId: company.id,
+  const agents = await fetchCurrencyExchangeAgents();
+  return agents.map((agent) => ({
+    agentId: agent.id,
   }));
 }
 
-export async function generateMetadata({ params }: CompanyProfilePageProps): Promise<Metadata> {
-  const company = await fetchLogisticsCompanyById(params.companyId);
+export async function generateMetadata(
+  { params }: CurrencyExchangeAgentProfilePageProps
+): Promise<Metadata> {
+  const agent = await fetchCurrencyExchangeAgentById(params.agentId);
 
-  if (!company) {
+  if (!agent) {
     return {
-      title: 'Logistics Company Not Found',
-      description: 'The logistics company you are looking for does not exist on our platform.',
+      title: 'Agent Not Found',
+      description: 'The currency exchange agent you are looking for does not exist.',
     };
   }
 
-  const shortDescription = company.bio.substring(0, 155);
+  const shortDescription = agent.bio.substring(0, 155);
 
   return {
-    title: `${company.name} - ${company.category} in ${company.location}`,
+    title: `${agent.businessName} - Currency Exchange in ${agent.location}`,
     description: shortDescription,
-    keywords: [company.name, 'logistics', 'delivery', company.category, company.location],
+    keywords: [agent.businessName, 'currency exchange', 'fiat', 'crypto', agent.location],
     openGraph: {
-      title: `${company.name} on EliteHub Marketplace`,
+      title: `${agent.businessName} on EliteHub Marketplace`,
       description: shortDescription,
       images: [
         {
-          url: company.profileImage,
+          url: agent.profileImage,
           width: 200,
           height: 200,
-          alt: `${company.name} logo`,
+          alt: `${agent.businessName} logo`,
         },
       ],
-      url: `https://www.elitehubng.com/logistics/${company.id}`,
+      url: `https://www.elitehubng.com/currency-exchange/${agent.id}`,
       siteName: 'EliteHub Marketplace',
       type: 'profile',
     },
     alternates: {
-      canonical: `https://www.elitehubng.com/logistics/${company.id}`,
+      canonical: `https://www.elitehubng.com/currency-exchange/${agent.id}`,
     },
   };
 }
 
 
-export default async function CompanyProfilePage({ params }: CompanyProfilePageProps) {
-    const company = await fetchLogisticsCompanyById(params.companyId);
-    if (!company) {
-        notFound();
-    }
-    return <CompanyProfileClientPage initialCompany={company} />;
+export default async function CurrencyExchangeAgentProfilePage(
+  { params }: CurrencyExchangeAgentProfilePageProps
+) {
+  const agent = await fetchCurrencyExchangeAgentById(params.agentId);
+  if (!agent) {
+    notFound();
+  }
+  return <AgentProfileClientPage initialAgent={agent} />;
 }
