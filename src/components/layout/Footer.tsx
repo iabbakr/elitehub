@@ -51,13 +51,6 @@ export function Footer() {
   }, [user, isMounted]);
 
   const footerLinks = {
-    'MAKE MONEY WITH ELITEHUB': [
-      ...(!isProvider ? [{ href: '/register', text: 'Become a Vendor' }] : []),
-      ...(!isProvider ? [{ href: '/register-logistics', text: 'Become a Logistics Partner' }] : []),
-      ...(!isProvider ? [{ href: '/register-lawyer', text: 'Become a Lawyer' }] : []),
-      ...(!isProvider ? [{ href: '/register-service', text: 'Become a Service Provider' }] : []),
-      ...(!isProvider ? [{ href: '/register-currency-exchange', text: 'Become a Currency Exchange Agent' }] : []),
-    ],
     'Need Help?': [
       { href: '/contact', text: 'Contact Us' },
       { href: '/how-to-sell', text: 'How to become a vendor and sell on Elitehub?' },
@@ -70,7 +63,13 @@ export function Footer() {
       { href: '/privacy', text: 'Privacy Notice' },
       { href: '/privacy', text: 'Cookie Notice' },
     ],
-    
+    'MAKE MONEY WITH ELITEHUB': [
+      ...(!isProvider ? [{ href: '/register', text: 'Become a Vendor' }] : []),
+      ...(!isProvider ? [{ href: '/register-logistics', text: 'Become a Logistics Partner' }] : []),
+      ...(!isProvider ? [{ href: '/register-lawyer', text: 'Become a Lawyer' }] : []),
+      ...(!isProvider ? [{ href: '/register-service', text: 'Become a Service Provider' }] : []),
+      ...(!isProvider ? [{ href: '/register-currency-exchange', text: 'Become a Currency Exchange Agent' }] : []),
+    ],
   };
   
   const makeMoneyLinks = footerLinks['MAKE MONEY WITH ELITEHUB'].filter(Boolean);
