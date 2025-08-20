@@ -13,7 +13,8 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps<{ companyId: string }>): Promise<Metadata> {
-  const company = await fetchLogisticsCompanyById(params.companyId);
+  const { companyId } = await params;
+  const company = await fetchLogisticsCompanyById(companyId);
 
   if (!company) {
     return {
@@ -51,7 +52,8 @@ export async function generateMetadata({ params }: PageProps<{ companyId: string
 
 
 export default async function CompanyProfilePage({ params }: PageProps<{ companyId: string }>) {
-    const company = await fetchLogisticsCompanyById(params.companyId);
+    const { companyId } = await params;
+    const company = await fetchLogisticsCompanyById(companyId);
     if (!company) {
         notFound();
     }

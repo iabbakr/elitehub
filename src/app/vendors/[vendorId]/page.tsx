@@ -14,7 +14,8 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps<{ vendorId: string }>): Promise<Metadata> {
-  const vendor = await fetchVendorById(params.vendorId);
+  const { vendorId } = await params;
+  const vendor = await fetchVendorById(vendorId);
 
   if (!vendor) {
     return {
@@ -52,9 +53,10 @@ export async function generateMetadata({ params }: PageProps<{ vendorId: string 
 
 
 export default async function VendorProfilePage({ params }: PageProps<{ vendorId: string }>) {
+  const { vendorId } = await params;
   const [vendor, vendorProducts] = await Promise.all([
-    fetchVendorById(params.vendorId),
-    fetchProductsByVendorId(params.vendorId)
+    fetchVendorById(vendorId),
+    fetchProductsByVendorId(vendorId)
   ]);
   
   if (!vendor) {

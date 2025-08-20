@@ -13,7 +13,8 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps<{ serviceId: string }>): Promise<Metadata> {
-  const provider = await fetchServiceProviderById(params.serviceId);
+  const { serviceId } = await params;
+  const provider = await fetchServiceProviderById(serviceId);
 
   if (!provider) {
     return {
@@ -51,7 +52,8 @@ export async function generateMetadata({ params }: PageProps<{ serviceId: string
 
 
 export default async function ServiceProviderProfilePage({ params }: PageProps<{ serviceId: string }>) {
-    const provider = await fetchServiceProviderById(params.serviceId);
+    const { serviceId } = await params;
+    const provider = await fetchServiceProviderById(serviceId);
     if (!provider) {
         notFound();
     }

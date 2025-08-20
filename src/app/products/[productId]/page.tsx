@@ -13,7 +13,8 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps<{ productId: string }>): Promise<Metadata> {
-  const product = await fetchProductById(params.productId);
+  const { productId } = await params;
+  const product = await fetchProductById(productId);
 
   if (!product) {
     return {
@@ -51,7 +52,8 @@ export async function generateMetadata({ params }: PageProps<{ productId: string
 
 
 export default async function ProductDetailPage({ params }: PageProps<{ productId: string }>) {
-  const product = await fetchProductById(params.productId);
+  const { productId } = await params;
+  const product = await fetchProductById(productId);
   if (!product) {
     notFound();
   }

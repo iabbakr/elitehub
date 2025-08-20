@@ -125,6 +125,7 @@ export type Vendor = {
   idCardBack?: string;
   passportPhoto?: string;
   nin?: string;
+  profileVisibleUntil: string | null;
 };
 
 export type Lawyer = {
@@ -867,7 +868,7 @@ export async function checkIfUserIsAlreadyProvider(uid: string): Promise<boolean
   return false;
 }
 
-export async function fetchProviderDataByUid(uid: string): Promise<{ providerData: any | null, type: string | null }> {
+export async function fetchProviderDataByUid(uid: string): Promise<{ providerData: any | null, type: string | null, transactions: Transaction[] }> {
     const providerCollections = {
         'serviceProviders': 'service', 
         'lawyers': 'lawyer', 
@@ -880,10 +881,12 @@ export async function fetchProviderDataByUid(uid: string): Promise<{ providerDat
         const snapshot = await getDocs(q);
         if (!snapshot.empty) {
             const doc = snapshot.docs[0];
-            return { providerData: { id: doc.id, ...doc.data() }, type };
+            const providerData = { id: doc.id, ...doc.data() };
+            const transactions = await fetchTransactionsByVendorId(doc.id);
+            return { providerData, type, transactions };
         }
     }
-    return { providerData: null, type: null };
+    return { providerData: null, type: null, transactions: [] };
 }
 
 export async function fetchNotifications(uid: string): Promise<Notification[]> {

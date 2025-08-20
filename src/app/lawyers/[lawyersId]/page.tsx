@@ -13,7 +13,8 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps<{ lawyerId: string }>): Promise<Metadata> {
-  const lawyer = await fetchLawyerById(params.lawyerId);
+  const { lawyerId } = await params;
+  const lawyer = await fetchLawyerById(lawyerId);
 
   if (!lawyer) {
     return {
@@ -51,7 +52,8 @@ export async function generateMetadata({ params }: PageProps<{ lawyerId: string 
 
 
 export default async function LawyerProfilePage({ params }: PageProps<{ lawyerId: string }>) {
-    const lawyer = await fetchLawyerById(params.lawyerId);
+    const { lawyerId } = await params;
+    const lawyer = await fetchLawyerById(lawyerId);
     if (!lawyer) {
         notFound();
     }

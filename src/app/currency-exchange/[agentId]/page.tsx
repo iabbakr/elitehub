@@ -15,7 +15,8 @@ export async function generateStaticParams() {
 export async function generateMetadata(
   { params }: PageProps<{ agentId: string }>
 ): Promise<Metadata> {
-  const agent = await fetchCurrencyExchangeAgentById(params.agentId);
+  const { agentId } = await params;
+  const agent = await fetchCurrencyExchangeAgentById(agentId);
 
   if (!agent) {
     return {
@@ -55,7 +56,8 @@ export async function generateMetadata(
 export default async function CurrencyExchangeAgentProfilePage(
   { params }: PageProps<{ agentId: string }>
 ) {
-  const agent = await fetchCurrencyExchangeAgentById(params.agentId);
+  const { agentId } = await params;
+  const agent = await fetchCurrencyExchangeAgentById(agentId);
   if (!agent) {
     notFound();
   }

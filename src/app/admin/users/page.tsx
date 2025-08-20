@@ -46,11 +46,13 @@ export default function AllUsersPage() {
 
   const sortedUsers = useMemo(() => {
     const sortableUsers = [...allUsers];
+    const getTime = (dateString?: string | null) => dateString ? new Date(dateString).getTime() : 0;
+
     switch (filter) {
         case 'active':
-            return sortableUsers.sort((a, b) => (b.lastLogin?.seconds || 0) - (a.lastLogin?.seconds || 0)).slice(0, 50);
+            return sortableUsers.sort((a, b) => getTime(b.lastLogin) - getTime(a.lastLogin)).slice(0, 50);
         case 'inactive':
-            return sortableUsers.sort((a, b) => (a.lastLogin?.seconds || 0) - (b.lastLogin?.seconds || 0)).slice(0, 50);
+            return sortableUsers.sort((a, b) => getTime(a.lastLogin) - getTime(b.lastLogin)).slice(0, 50);
         default:
             return sortableUsers.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
     }
