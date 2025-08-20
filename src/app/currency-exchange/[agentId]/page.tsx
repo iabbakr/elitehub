@@ -4,6 +4,7 @@ import { fetchCurrencyExchangeAgentById, fetchCurrencyExchangeAgents } from '@/l
 import type { Metadata } from 'next';
 import { AgentProfileClientPage } from './AgentProfileClientPage';
 
+// Define the props explicitly for this page
 type CurrencyExchangeAgentProfilePageProps = {
   params: { agentId: string };
   searchParams?: { [key: string]: string | string[] | undefined };
