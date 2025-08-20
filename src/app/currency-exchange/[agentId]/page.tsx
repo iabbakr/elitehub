@@ -4,11 +4,6 @@ import { fetchCurrencyExchangeAgentById, fetchCurrencyExchangeAgents } from '@/l
 import type { Metadata } from 'next';
 import { AgentProfileClientPage } from './AgentProfileClientPage';
 
-interface CurrencyExchangeAgentProfilePageProps {
-  params: { agentId: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-}
-
 export async function generateStaticParams() {
   const agents = await fetchCurrencyExchangeAgents();
   return agents.map((agent) => ({
@@ -17,7 +12,7 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata(
-  { params }: CurrencyExchangeAgentProfilePageProps
+  { params }: { params: { agentId: string } }
 ): Promise<Metadata> {
   const agent = await fetchCurrencyExchangeAgentById(params.agentId);
 
@@ -57,7 +52,7 @@ export async function generateMetadata(
 
 
 export default async function CurrencyExchangeAgentProfilePage(
-  { params }: CurrencyExchangeAgentProfilePageProps
+  { params }: { params: { agentId: string } }
 ) {
   const agent = await fetchCurrencyExchangeAgentById(params.agentId);
   if (!agent) {
