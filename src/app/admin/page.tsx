@@ -20,6 +20,7 @@ import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { add } from 'date-fns';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { sendApprovalEmail } from '@/lib/email';
 
 const referralTiers = [
     { count: 10, reward: '10 posts' },
@@ -126,6 +127,9 @@ export default function AdminDashboardPage() {
       isRead: false,
       timestamp: serverTimestamp()
     });
+
+    const profileUrl = `https://www.elitehubng.com/${targetCollection}/${newProviderRef.id}`;
+    await sendApprovalEmail(app.email, app.fullName || app.vendorName || app.businessName || app.name, providerType, profileUrl);
 
     if (providerType === 'Vendor' && app.referralCode) {
       const q = query(collection(db, "vendors"), where("referralCode", "==", app.referralCode));

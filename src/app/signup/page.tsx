@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { doc, setDoc, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
+import { sendWelcomeEmail } from '@/lib/email';
 
 const GoogleIcon = () => (
     <svg className="mr-2 h-4 w-4" viewBox="0 0 48 48">
@@ -82,6 +83,7 @@ export default function SignupPage() {
           title: 'Account Created!',
           description: `Welcome, ${user.displayName || 'User'}!`,
         });
+        await sendWelcomeEmail(user.email!, user.displayName!);
       } else {
         // User already exists, just update their last login
         await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
@@ -120,6 +122,8 @@ export default function SignupPage() {
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
       });
+      
+      await sendWelcomeEmail(values.email, values.fullName);
 
       toast({
         title: 'Account Created!',
