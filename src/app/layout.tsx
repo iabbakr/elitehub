@@ -1,6 +1,6 @@
 
 import type { Metadata } from "next";
-import "./globals.css";
+import "../app/global.css";
 import { cn } from "@/lib/utils";
 import { ClientLayout } from "@/components/layout/ClientLayout";
 
