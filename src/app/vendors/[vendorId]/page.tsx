@@ -12,7 +12,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: { params: { vendorId: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<{ vendorId: string }>): Promise<Metadata> {
   const vendor = await fetchVendorById(params.vendorId);
 
   if (!vendor) {
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: { params: { vendorId: string 
 }
 
 
-export default async function VendorProfilePage({ params }: { params: { vendorId: string } }) {
+export default async function VendorProfilePage({ params }: PageProps<{ vendorId: string }>) {
   const [vendor, vendorProducts] = await Promise.all([
     fetchVendorById(params.vendorId),
     fetchProductsByVendorId(params.vendorId)

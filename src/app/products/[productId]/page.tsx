@@ -12,7 +12,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: { params: { productId: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<{ productId: string }>): Promise<Metadata> {
   const product = await fetchProductById(params.productId);
 
   if (!product) {
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: { params: { productId: string
 }
 
 
-export default async function ProductDetailPage({ params }: { params: { productId: string } }) {
+export default async function ProductDetailPage({ params }: PageProps<{ productId: string }>) {
   const product = await fetchProductById(params.productId);
   if (!product) {
     notFound();
