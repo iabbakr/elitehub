@@ -3,11 +3,7 @@ import { notFound } from 'next/navigation';
 import { fetchProductById, fetchProducts, fetchVendorById, type Product, type Vendor } from '@/lib/data';
 import type { Metadata } from 'next';
 import { ProductClientPage } from './ProductClientPage';
-
-interface ProductDetailPageProps {
-  params: { productId: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-}
+import type { PageProps } from '@/types/page';
 
 export async function generateStaticParams() {
   const products = await fetchProducts();
@@ -16,7 +12,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<{ productId: string }>): Promise<Metadata> {
   const product = await fetchProductById(params.productId);
 
   if (!product) {
@@ -54,7 +50,7 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
 }
 
 
-export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
+export default async function ProductDetailPage({ params }: PageProps<{ productId: string }>) {
   const product = await fetchProductById(params.productId);
   if (!product) {
     notFound();

@@ -3,11 +3,7 @@ import { notFound } from 'next/navigation';
 import { fetchLogisticsCompanyById, fetchLogisticsCompanies } from '@/lib/data';
 import type { Metadata } from 'next';
 import { CompanyProfileClientPage } from './CompanyProfileClientPage';
-
-interface CompanyProfilePageProps {
-  params: { companyId: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-}
+import type { PageProps } from '@/types/page';
 
 export async function generateStaticParams() {
   const companies = await fetchLogisticsCompanies();
@@ -16,7 +12,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: CompanyProfilePageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<{ companyId: string }>): Promise<Metadata> {
   const company = await fetchLogisticsCompanyById(params.companyId);
 
   if (!company) {
@@ -54,7 +50,7 @@ export async function generateMetadata({ params }: CompanyProfilePageProps): Pro
 }
 
 
-export default async function CompanyProfilePage({ params }: CompanyProfilePageProps) {
+export default async function CompanyProfilePage({ params }: PageProps<{ companyId: string }>) {
     const company = await fetchLogisticsCompanyById(params.companyId);
     if (!company) {
         notFound();
