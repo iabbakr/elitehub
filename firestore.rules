@@ -6,7 +6,7 @@ service cloud.firestore {
     // Helper function to check for Admin role
     function isAdmin() {
       return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'your-actual-admin@email.com';
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'devabu01@gmail.com';
     }
 
     // Helper function to check if a user is authenticated

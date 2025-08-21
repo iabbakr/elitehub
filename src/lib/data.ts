@@ -858,7 +858,7 @@ export async function checkIfUserIsAlreadyProvider(uid: string): Promise<boolean
   ];
 
   for (const collectionName of applicationCollections) {
-    const q = query(collection(db, collectionName), where("uid", "==", uid), limit(1));
+    const q = query(collection(db, collectionName), where("uid", "==", uid), where("status", "==", "pending"));
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       return true; // Found a pending application
