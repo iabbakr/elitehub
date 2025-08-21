@@ -5,7 +5,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const fromEmail = 'EliteHub <onboarding@elitehubng.com>';
+const fromEmail = 'EliteHub <onboarding@mail.elitehubng.com>';
 
 export async function sendWelcomeEmail(to: string, name: string) {
   try {
