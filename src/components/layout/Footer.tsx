@@ -62,18 +62,8 @@ export function Footer() {
       { href: '/terms', text: 'Terms and Conditions' },
       { href: '/privacy', text: 'Privacy Notice' },
       { href: '/privacy', text: 'Cookie Notice' },
-    ],
-    'MAKE MONEY WITH ELITEHUB': [
-      ...(!isProvider ? [{ href: '/register', text: 'Become a Vendor' }] : []),
-      ...(!isProvider ? [{ href: '/register-logistics', text: 'Become a Logistics Partner' }] : []),
-      ...(!isProvider ? [{ href: '/register-lawyer', text: 'Become a Lawyer' }] : []),
-      ...(!isProvider ? [{ href: '/register-service', text: 'Become a Service Provider' }] : []),
-      ...(!isProvider ? [{ href: '/register-currency-exchange', text: 'Become a Currency Exchange Agent' }] : []),
-    ],
+    ]
   };
-  
-  const makeMoneyLinks = footerLinks['MAKE MONEY WITH ELITEHUB'].filter(Boolean);
-
 
   return (
     <footer className="bg-card border-t mt-12">
@@ -103,20 +93,6 @@ export function Footer() {
                     ))}
                 </ul>
             </div>
-            {isMounted && makeMoneyLinks.length > 0 && (
-             <div>
-                <h3 className="font-bold text-lg mb-4">MAKE MONEY WITH ELITEHUB</h3>
-                <ul className="space-y-2">
-                    {makeMoneyLinks.map(link => (
-                        link && <li key={link.text}>
-                            <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                                {link.text}
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
-            </div>
-            )}
              <div>
                 <h3 className="font-bold text-lg mb-4">JOIN US ON</h3>
                  <div className="flex items-center gap-4">
