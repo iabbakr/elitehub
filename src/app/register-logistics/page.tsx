@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -20,8 +19,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { Loader2, Truck } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { collection, addDoc, serverTimestamp, setDoc, doc } from 'firebase/firestore';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { nigerianStates, fetchUserByUid, checkIfUserIsAlreadyProvider, logisticsCategories, checkIfValueExists } from '@/lib/data';
@@ -33,6 +33,7 @@ import Link from 'next/link';
 const formSchema = z.object({
   fullName: z.string().min(2, "Full name is required."),
   email: z.string().email("A valid email is required."),
+  password: z.string().min(8, "Password must be at least 8 characters."),
   phoneNumber: z.string().min(10, "Please enter a valid phone number."),
   whatsappNumber: z.string().optional(),
   name: z.string().min(2, "Company name must be at least 2 characters."),
@@ -50,15 +51,14 @@ const formSchema = z.object({
 export default function RegisterLogisticsPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, loading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCheckingUser, setIsCheckingUser] = useState(true);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: '',
       email: '',
+      password: '',
       phoneNumber: '',
       whatsappNumber: '',
       name: '',
@@ -70,49 +70,8 @@ export default function RegisterLogisticsPage() {
     },
   });
 
-  useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        toast({
-          variant: 'destructive',
-          title: "Authentication required",
-          description: "You must be logged in to apply."
-        });
-        router.push('/login');
-        return;
-      }
-      
-      const checkProviderStatus = async () => {
-        const isProvider = await checkIfUserIsAlreadyProvider(user.uid);
-        if (isProvider) {
-          toast({
-            variant: 'destructive',
-            title: "Registration Unavailable",
-            description: "You already have a provider role."
-          });
-          router.push('/profile');
-        } else {
-            const userData = await fetchUserByUid(user.uid);
-            if (userData) {
-                form.reset({
-                  ...form.getValues(),
-                  fullName: userData.fullName || '',
-                  email: userData.email || '',
-                });
-            }
-            setIsCheckingUser(false);
-        }
-      };
-
-      checkProviderStatus();
-    }
-  }, [user, loading, router, toast, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
-      return;
-    }
     setIsSubmitting(true);
     try {
       const collectionsToCheck = ['logisticsCompanies', 'logisticsApplications'];
@@ -131,6 +90,17 @@ export default function RegisterLogisticsPage() {
           }
       }
       
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        fullName: values.fullName,
+        email: user.email,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+      });
+
       await addDoc(collection(db, "logisticsApplications"), {
         uid: user.uid,
         ...values,
@@ -140,29 +110,25 @@ export default function RegisterLogisticsPage() {
 
       toast({
         title: 'Application Submitted!',
-        description: 'Your application is now under review.',
+        description: 'Your application is now under review. You have been logged in.',
       });
       form.reset();
       router.push('/profile');
 
     } catch (error: any) {
       console.error("Application Submission Error:", error);
+       let errorMessage = 'An unexpected error occurred. Please try again.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "This email is already in use. Please log in or use a different email.";
+      }
       toast({
         variant: 'destructive',
         title: 'Submission Failed',
-        description: 'An unexpected error occurred. Please try again.',
+        description: errorMessage,
       });
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  if (loading || isCheckingUser) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
   }
 
   return (
@@ -181,9 +147,22 @@ export default function RegisterLogisticsPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <FormField control={form.control} name="fullName" render={({ field }) => ( <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} readOnly /></FormControl><FormMessage /></FormItem> )} />
+                 <FormField control={form.control} name="fullName" render={({ field }) => ( <FormItem><FormLabel>Full Name of Contact Person</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem> )} />
               </div>
+              <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="********" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="(123) 456-7890" {...field} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="whatsappNumber" render={({ field }) => ( <FormItem><FormLabel>WhatsApp Number (Optional)</FormLabel><FormControl><Input placeholder="e.g. 2348012345678" {...field} /></FormControl><FormDescription>Start with country code.</FormDescription><FormMessage /></FormItem> )} />

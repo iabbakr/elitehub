@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -20,8 +19,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from '@/lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { collection, addDoc, serverTimestamp, doc, setDoc } from "firebase/firestore";
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { nigerianStates, productCategories, fetchUserByUid, checkIfUserIsAlreadyProvider, checkIfValueExists } from '@/lib/data';
@@ -29,14 +29,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { sendWelcomeEmail } from '@/lib/email';
+
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Full name is required."),
   email: z.string().email("A valid email is required."),
+  password: z.string().min(8, "Password must be at least 8 characters."),
   phoneNumber: z.string().min(10, "Please enter a valid phone number."),
   whatsappNumber: z.string().optional(),
   vendorName: z.string().min(2, "Vendor name must be at least 2 characters."),
-  username: z.string().min(3, "Username must be at least 3 characters."),
+  username: z.string().min(3, "Username must be at least 3 characters.").regex(/^[a-z0-9_]+$/, "Username can only contain lowercase letters, numbers, and underscores."),
   address: z.string().min(10, "Please enter a valid address."),
   city: z.string().min(2, "City is required."),
   location: z.string({ required_error: "Please select a location." }),
@@ -51,10 +54,6 @@ const formSchema = z.object({
   terms: z.boolean().refine(value => value === true, {
     message: 'You must agree to the terms and conditions.',
   }),
-  idCardFront: z.any().optional(),
-  idCardBack: z.any().optional(),
-  passportPhoto: z.any().optional(),
-  nin: z.string().optional(),
 });
 
 const vendorProductCategories = productCategories.filter(
@@ -64,15 +63,14 @@ const vendorProductCategories = productCategories.filter(
 export default function RegisterPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const { user, loading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCheckingUser, setIsCheckingUser] = useState(true);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: '',
       email: '',
+      password: '',
       phoneNumber: '',
       whatsappNumber: '',
       vendorName: '',
@@ -87,54 +85,11 @@ export default function RegisterPage() {
     },
   });
 
-  useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        toast({
-          variant: 'destructive',
-          title: "Authentication required",
-          description: "You must be logged in to apply as a vendor."
-        });
-        router.push('/login');
-        return;
-      }
-      
-      const checkVendorStatus = async () => {
-        const isProvider = await checkIfUserIsAlreadyProvider(user.uid);
-        if (isProvider) {
-          toast({
-            variant: 'destructive',
-            title: "Registration Unavailable",
-            description: "You already have a vendor or provider role."
-          });
-          router.push('/profile');
-        } else {
-            const userData = await fetchUserByUid(user.uid);
-            if (userData) {
-                form.reset({
-                  ...form.getValues(),
-                  fullName: userData.fullName || '',
-                  email: userData.email || '',
-                });
-            }
-            setIsCheckingUser(false);
-        }
-      };
-
-      checkVendorStatus();
-    }
-  }, [user, loading, router, toast, form]);
-
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
-      return;
-    }
     setIsSubmitting(true);
 
     try {
-      // Uniqueness checks
+      // Uniqueness checks for application data
       const collectionsToCheck = ['vendors', 'vendorApplications'];
       const checks = [
           { field: 'vendorName', value: values.vendorName, label: 'Vendor Name' },
@@ -151,40 +106,64 @@ export default function RegisterPage() {
           }
       }
 
+      // Create Firebase Auth user first
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // Create the user document in 'users' collection
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        fullName: values.fullName,
+        email: user.email,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+      });
+      
+      // Submit the vendor application
       await addDoc(collection(db, "vendorApplications"), {
         uid: user.uid, 
-        ...values,
+        fullName: values.fullName,
+        email: values.email,
+        phoneNumber: values.phoneNumber,
+        whatsappNumber: values.whatsappNumber,
+        vendorName: values.vendorName,
+        username: values.username,
+        address: values.address,
+        city: values.city,
+        location: values.location,
+        referralCode: values.referralCode,
+        rcNumber: values.rcNumber,
+        businessDescription: values.businessDescription,
+        categories: values.categories,
         status: 'pending',
         submittedAt: serverTimestamp(),
       });
+      
+      // We don't send a welcome email here, it will be sent upon approval.
 
       toast({
         title: 'Application Submitted!',
-        description: 'Your vendor application is now under review. We will notify you via email.',
+        description: 'Your vendor application is now under review. We will notify you via email once approved. You have been logged in.',
       });
-      form.reset();
-      router.push('/profile'); 
+      
+      // router.push('/profile'); // This will redirect them to their new (but basic) user profile.
 
     } catch (error: any) {
       console.error("Application Submission Error:", error);
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "This email is already in use. Please log in or use a different email.";
+      }
       toast({
         variant: 'destructive',
         title: 'Submission Failed',
-        description: 'An unexpected error occurred. Please try again.',
+        description: errorMessage,
       });
     } finally {
       setIsSubmitting(false);
     }
   }
   
-  if (loading || isCheckingUser) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="flex justify-center items-center py-12">
       <Card className="w-full max-w-xl shadow-xl">
@@ -220,6 +199,7 @@ export default function RegisterPage() {
                       <FormControl>
                         <Input placeholder="johndoe" {...field} />
                       </FormControl>
+                       <FormDescription>Your unique name on EliteHub.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -231,7 +211,20 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Email Address</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="you@example.com" {...field} readOnly />
+                        <Input type="email" placeholder="you@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="********" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -292,19 +285,6 @@ export default function RegisterPage() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="referralCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Referral Code (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter code from an existing vendor" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
                <FormField
                   control={form.control}
@@ -358,6 +338,19 @@ export default function RegisterPage() {
                       )}
                     />
                 </div>
+                 <FormField
+                  control={form.control}
+                  name="referralCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Referral Code (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter code from an existing vendor" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                <FormField
                   control={form.control}
                   name="businessDescription"

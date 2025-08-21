@@ -1,6 +1,6 @@
 
 import type { Metadata } from "next";
-import "../app/global.css";
+import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ClientLayout } from "@/components/layout/ClientLayout";
 
@@ -10,11 +10,12 @@ export const metadata: Metadata = {
     default: "EliteHub Nigeria - Premier Marketplace for Verified Vendors",
     template: "%s | EliteHub NG"
   },
-  description: "Welcome to EliteHub Nigeria (elitehub.ng), the premier marketplace for verified vendors and professionals in Nigeria. Shop with confidence at the elitehub nigeria marketplace.",
+  description: "Welcome to EliteHub Nigeria (elitehubng.com), the premier marketplace for verified vendors and professionals in Nigeria. Shop with confidence at the elitehub nigeria marketplace.",
   keywords: [
     'elitehub',
     'elitehubng',
     'elitehub nigeria',
+    'elitehub marketplace',
     'elitehub nigeria marketplace',
     'verified vendors nigeria',
     'buy and sell nigeria',
