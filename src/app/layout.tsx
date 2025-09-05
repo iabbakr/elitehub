@@ -15,7 +15,6 @@ export const metadata: Metadata = {
     'elitehub',
     'elitehubng',
     'elitehub nigeria',
-    'elitehub marketplace',
     'elitehub nigeria marketplace',
     'verified vendors nigeria',
     'buy and sell nigeria',

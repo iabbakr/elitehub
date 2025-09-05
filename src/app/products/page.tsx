@@ -66,27 +66,26 @@ export default function AllProductsPage() {
         products = products.filter(p => p.name.toLowerCase().includes(filters.product.toLowerCase()));
     }
     
-    // Sort the filtered products
+    // Sort the filtered products based on the new hierarchy
     products.sort((a, b) => {
         const vendorA = getVendor(a.vendorId);
         const vendorB = getVendor(b.vendorId);
 
         const tierOrder = { 'vvip': 4, 'vip': 3 };
+        
         const tierA = vendorA?.tier ? tierOrder[vendorA.tier as keyof typeof tierOrder] || 0 : 0;
         const tierB = vendorB?.tier ? tierOrder[vendorB.tier as keyof typeof tierOrder] || 0 : 0;
-
-        if (tierB !== tierA) return tierB - tierA; // Sort by tier first
+        if (tierB !== tierA) return tierB - tierA;
 
         const boostedA = a.boostedUntil && new Date(a.boostedUntil) > new Date() ? 2 : 0;
         const boostedB = b.boostedUntil && new Date(b.boostedUntil) > new Date() ? 2 : 0;
+        if (boostedB !== boostedA) return boostedB - boostedA;
 
-        if (boostedB !== boostedA) return boostedB - boostedA; // Then by boost status
-
-        const verifiedA = vendorA?.isVerified ? 1 : 0;
-        const verifiedB = vendorB?.isVerified ? 1 : 0;
-
-        if (verifiedB !== verifiedA) return verifiedB - verifiedA; // Then by verified status
-
+        const isBadgeActive = (v?: Vendor) => v?.isVerified && v?.badgeExpirationDate && new Date(v.badgeExpirationDate) > new Date();
+        const verifiedA = isBadgeActive(vendorA) ? 1 : 0;
+        const verifiedB = isBadgeActive(vendorB) ? 1 : 0;
+        if (verifiedB !== verifiedA) return verifiedB - verifiedA;
+        
         return 0; // Keep original order if all else is equal
     });
 

@@ -131,11 +131,11 @@ export default function AllVendorsPage() {
     toast({ title: 'Phone Numbers Copied' });
   };
 
-  const sortedVendors = useMemo(() => vendors.sort((a, b) => a.name.localeCompare(b.name)), [vendors]);
+  const sortedVendors = useMemo(() => vendors.sort((a, b) => (a.name || '').localeCompare(b.name || '')), [vendors]);
   
   const filteredVendors = useMemo(() => {
     return sortedVendors.filter(v => {
-        const matchesSearch = v.name.toLowerCase().includes(search.toLowerCase()) || v.email.toLowerCase().includes(search.toLowerCase());
+        const matchesSearch = (v.name || '').toLowerCase().includes(search.toLowerCase()) || (v.email || '').toLowerCase().includes(search.toLowerCase());
         if (!matchesSearch) return false;
         
         switch(filter) {

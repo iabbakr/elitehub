@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -26,7 +27,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { getUserProviderRole, checkIfUserIsAlreadyProvider } from '@/lib/data';
+import { getUserProviderRole, checkIfUserHasPendingApplication } from '@/lib/data';
 import type { Notification, ProviderType } from '@/lib/data';
 import { Logo } from '../Logo';
 import { Separator } from '@/components/ui/separator';
@@ -78,7 +79,7 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user } = useAuth();
   const [providerInfo, setProviderInfo] = useState<{type: ProviderType, id: string | null}>({type: null, id: null});
-  const [isProviderOrHasPendingApp, setIsProviderOrHasPendingApp] = useState(false);
+  const [hasPendingApplication, setHasPendingApplication] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -115,15 +116,18 @@ export function Header() {
   useEffect(() => {
     const checkUserRoles = async () => {
       if (user) {
-        const [roleInfo, hasProviderOrApp] = await Promise.all([
-          getUserProviderRole(user.uid),
-          checkIfUserIsAlreadyProvider(user.uid),
-        ]);
+        const roleInfo = await getUserProviderRole(user.uid);
         setProviderInfo(roleInfo);
-        setIsProviderOrHasPendingApp(hasProviderOrApp);
+        
+        if (!roleInfo.type) {
+          const appType = await checkIfUserHasPendingApplication(user.uid);
+          setHasPendingApplication(!!appType);
+        } else {
+          setHasPendingApplication(false);
+        }
       } else {
         setProviderInfo({type: null, id: null});
-        setIsProviderOrHasPendingApp(false);
+        setHasPendingApplication(false);
       }
     };
     checkUserRoles();
@@ -131,20 +135,26 @@ export function Header() {
 
   useEffect(() => {
     if (!user) {
-        setNotifications([]);
-        return;
-    };
+      setNotifications([]);
+      return;
+    }
 
     const q = query(
-        collection(db, "notifications"),
-        where("recipientId", "==", user.uid)
+      collection(db, "notifications"),
+      where("recipientId", "==", user.uid),
+      orderBy("timestamp", "desc"),
+      limit(10)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Notification[];
-        // Sort on the client side
-        notifs.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
-        setNotifications(notifs.slice(0, 10));
+        setNotifications(notifs);
+    }, (error) => {
+        console.error("Notification listener error:", error);
+        if (error.code === 'permission-denied') {
+             console.log("Firestore security rules are preventing notification access.");
+        }
+        setNotifications([]);
     });
 
     return () => unsubscribe();
@@ -172,7 +182,7 @@ export function Header() {
     return email.substring(0, 2).toUpperCase();
   };
   
-  const showBecomeAVendor = user && !isProviderOrHasPendingApp;
+  const showBecomeAProviderLink = user && !providerInfo.type && !hasPendingApplication;
   
   const handleNotificationOpen = () => {
     setIsPopoverOpen(false);
@@ -193,16 +203,12 @@ export function Header() {
                     <Briefcase className="mr-2 h-5 w-5" />
                     <span>My Products</span>
                 </Link>
-                <Link href="/referrals" className="flex items-center p-2 text-lg font-medium transition-colors hover:text-primary" onClick={() => setIsMenuOpen(false)}>
-                    <Share2 className="mr-2 h-5 w-5" />
-                    <span>Referrals</span>
-                </Link>
-                <Link href="/kyc" className="flex items-center p-2 text-lg font-medium transition-colors hover:text-primary" onClick={() => setIsMenuOpen(false)}>
-                    <BadgeHelp className="mr-2 h-5 w-5" />
-                    <span>KYC</span>
-                </Link>
               </>
             }
+             <Link href="/referrals" className="flex items-center p-2 text-lg font-medium transition-colors hover:text-primary" onClick={() => setIsMenuOpen(false)}>
+                <Share2 className="mr-2 h-5 w-5" />
+                <span>Referrals</span>
+            </Link>
             {providerInfo.type === 'currency-exchange' &&
               <>
                 <Link href="/kyc" className="flex items-center p-2 text-lg font-medium transition-colors hover:text-primary" onClick={() => setIsMenuOpen(false)}>
@@ -222,15 +228,19 @@ export function Header() {
                 <UserIcon className="mr-2 h-5 w-5" />
                 <span>Profile</span>
             </Link>
-            {showBecomeAVendor && (
+            {showBecomeAProviderLink && (
                 <Link href="/register" className="flex items-center p-2 text-lg font-medium transition-colors hover:text-primary" onClick={() => setIsMenuOpen(false)}>
                     <Briefcase className="mr-2 h-5 w-5" />
-                    <span>Become a Vendor</span>
+                    <span>Become a Provider</span>
                 </Link>
             )}
+             <Link href="/referrals" className="flex items-center p-2 text-lg font-medium transition-colors hover:text-primary" onClick={() => setIsMenuOpen(false)}>
+                <Share2 className="mr-2 h-5 w-5" />
+                <span>Referrals</span>
+            </Link>
             <Link href="/report" className="flex items-center p-2 text-lg font-medium transition-colors hover:text-primary" onClick={() => setIsMenuOpen(false)}>
                 <AlertTriangle className="mr-2 h-5 w-5" />
-                <span>Report a Vendor</span>
+                <span>Report an Issue</span>
             </Link>
         </>
       )}
@@ -258,7 +268,7 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
-            {showBecomeAVendor && (
+            {showBecomeAProviderLink && (
                  <Link
                     href="/register"
                     className={cn(
@@ -266,7 +276,7 @@ export function Header() {
                     pathname === '/register' ? 'text-primary' : 'text-muted-foreground'
                     )}
                 >
-                    Become a Vendor
+                    Become a Provider
                 </Link>
             )}
              {isAdmin && (
@@ -356,20 +366,14 @@ export function Header() {
                                   <span>My Products</span>
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href="/referrals">
-                                  <Share2 className="mr-2 h-4 w-4" />
-                                  <span>Referrals</span>
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href="/kyc">
-                                  <BadgeHelp className="mr-2 h-4 w-4" />
-                                  <span>KYC</span>
-                                </Link>
-                            </DropdownMenuItem>
                           </>
                        )}
+                       <DropdownMenuItem asChild>
+                         <Link href="/referrals">
+                            <Share2 className="mr-2 h-4 w-4" />
+                            <span>Referrals</span>
+                          </Link>
+                      </DropdownMenuItem>
                        {providerInfo.type === 'currency-exchange' && (
                           <>
                             <DropdownMenuItem asChild>
@@ -395,18 +399,24 @@ export function Header() {
                             <span>Profile</span>
                           </Link>
                       </DropdownMenuItem>
-                      {showBecomeAVendor && (
+                      {showBecomeAProviderLink && (
                        <DropdownMenuItem asChild>
                          <Link href="/register">
                             <Briefcase className="mr-2 h-4 w-4" />
-                            <span>Become a Vendor</span>
+                            <span>Become a Provider</span>
                           </Link>
                       </DropdownMenuItem>
                       )}
                        <DropdownMenuItem asChild>
+                         <Link href="/referrals">
+                            <Share2 className="mr-2 h-4 w-4" />
+                            <span>Referrals</span>
+                          </Link>
+                      </DropdownMenuItem>
+                       <DropdownMenuItem asChild>
                          <Link href="/report">
                             <AlertTriangle className="mr-2 h-4 w-4" />
-                            <span>Report a Vendor</span>
+                            <span>Report an Issue</span>
                           </Link>
                       </DropdownMenuItem>
                     </>
@@ -520,3 +530,6 @@ export function Header() {
     </header>
   );
 }
+
+
+

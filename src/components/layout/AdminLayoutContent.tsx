@@ -4,7 +4,7 @@
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Loader2, Users, LayoutDashboard, Package, Scale, Truck, ArrowRightLeft, Wrench, ChevronLeft, Menu } from 'lucide-react';
+import { Loader2, Users, LayoutDashboard, Package, Scale, Truck, ArrowRightLeft, Wrench, ChevronLeft, Menu, Gift, Banknote } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ const adminNavLinks = [
     { href: '/admin/logistics', label: 'Logistics', icon: Truck },
     { href: '/admin/currency-exchange', label: 'Currency Exchange', icon: ArrowRightLeft },
     { href: '/admin/services', label: 'Service Providers', icon: Wrench },
+    { href: '/admin/payouts', label: 'Payout Requests', icon: Banknote },
 ];
 
 export function AdminLayoutContent({ children }: { children: React.ReactNode }) {

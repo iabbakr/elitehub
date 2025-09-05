@@ -1,6 +1,9 @@
 
-import { collection, getDocs, doc, getDoc, query, where, addDoc, serverTimestamp, orderBy, increment, limit, writeBatch } from "firebase/firestore";
+
+import { collection, getDocs, doc, getDoc, query, where, addDoc, serverTimestamp, orderBy, increment, limit, writeBatch, Timestamp, arrayUnion, runTransaction } from "firebase/firestore";
 import { db } from "./firebase";
+import { auth } from "./firebase";
+import { createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from "firebase/auth";
 
 export type Product = {
   id: string;
@@ -126,6 +129,8 @@ export type Vendor = {
   passportPhoto?: string;
   nin?: string;
   profileVisibleUntil: string | null;
+  profileUpdateStatus?: 'pending' | 'approved' | 'rejected' | 'none';
+  lastProfileUpdateRequest?: any;
 };
 
 export type Lawyer = {
@@ -157,15 +162,20 @@ export type Lawyer = {
     idCardBack?: string;
     passportPhoto?: string;
     nin?: string;
+    profileUpdateStatus?: 'pending' | 'approved' | 'rejected' | 'none';
+    lastProfileUpdateRequest?: any;
+    boostedUntil?: string;
 };
 
-export type LawyerApplication = Omit<Lawyer, 'id' | 'rating' | 'ratingCount' | 'totalRating' | 'profileVisibleUntil' | 'isVerified' | 'badgeExpirationDate' | 'tier' | 'kycStatus'> & {
+export type LawyerApplication = Omit<Lawyer, 'id' | 'rating' | 'ratingCount' | 'totalRating' | 'profileVisibleUntil' | 'isVerified' | 'badgeExpirationDate' | 'tier' | 'kycStatus' | 'boostedUntil'> & {
     id: string;
     submittedAt: any;
     idCardFront?: string;
     idCardBack?: string;
     passportPhoto?: string;
     nin?: string;
+    password?: string;
+    referralCode?: string;
 };
 
 export type CurrencyExchangeAgent = {
@@ -201,6 +211,8 @@ export type CurrencyExchangeAgent = {
     idCardBack?: string;
     passportPhoto?: string;
     nin?: string;
+    profileUpdateStatus?: 'pending' | 'approved' | 'rejected' | 'none';
+    lastProfileUpdateRequest?: any;
 };
 
 export type CurrencyExchangeApplication = Omit<CurrencyExchangeAgent, 'id' | 'rating' | 'ratingCount' | 'totalRating' | 'profileVisibleUntil' | 'galleryActiveUntil' | 'isVerified' | 'badgeExpirationDate' | 'tier' | 'kycStatus'> & {
@@ -210,6 +222,8 @@ export type CurrencyExchangeApplication = Omit<CurrencyExchangeAgent, 'id' | 'ra
     idCardBack?: string;
     passportPhoto?: string;
     nin?: string;
+    password?: string;
+    referralCode?: string;
 };
 
 export type LogisticsCompany = {
@@ -243,6 +257,8 @@ export type LogisticsCompany = {
     idCardBack?: string;
     passportPhoto?: string;
     nin?: string;
+    profileUpdateStatus?: 'pending' | 'approved' | 'rejected' | 'none';
+    lastProfileUpdateRequest?: any;
 };
 
 export type LogisticsApplication = Omit<LogisticsCompany, 'id' | 'rating' | 'ratingCount' | 'totalRating' | 'profileVisibleUntil' | 'galleryActiveUntil' | 'isVerified' | 'badgeExpirationDate' | 'tier' | 'boostedUntil' | 'kycStatus'> & {
@@ -252,6 +268,8 @@ export type LogisticsApplication = Omit<LogisticsCompany, 'id' | 'rating' | 'rat
     idCardBack?: string;
     passportPhoto?: string;
     nin?: string;
+    password?: string;
+    referralCode?: string;
 };
 
 export type ServiceProvider = {
@@ -289,6 +307,8 @@ export type ServiceProvider = {
     idCardBack?: string;
     passportPhoto?: string;
     nin?: string;
+    profileUpdateStatus?: 'pending' | 'approved' | 'rejected' | 'none';
+    lastProfileUpdateRequest?: any;
 };
 
 export type ServiceProviderApplication = Omit<ServiceProvider, 'id' | 'rating' | 'ratingCount' | 'totalRating' | 'profileVisibleUntil' | 'galleryActiveUntil' | 'isVerified' | 'badgeExpirationDate' | 'tier' | 'boostedUntil' | 'kycStatus'> & {
@@ -298,6 +318,8 @@ export type ServiceProviderApplication = Omit<ServiceProvider, 'id' | 'rating' |
     idCardBack?: string;
     passportPhoto?: string;
     nin?: string;
+    password?: string;
+    referralCode?: string;
 };
 
 
@@ -306,8 +328,17 @@ export type UserData = {
     uid: string;
     fullName: string;
     email: string;
-    createdAt: string;
-    lastLogin?: string | null;
+    createdAt: any;
+    lastLogin?: any;
+    referralCode?: string;
+    referredBy: string | null;
+    referralBalance: number;
+    pendingReferrals: { uid: string; fullName: string }[];
+    successfulReferrals: { uid: string; fullName: string }[];
+    bankName?: string;
+    accountNumber?: string;
+    accountName?: string;
+    hasSubscribed: boolean; // New field to track if user has ever subscribed
 };
 
 export type Reply = {
@@ -335,7 +366,7 @@ export type VendorApplication = {
   id:string;
   vendorName: string;
   email: string;
-  referralCode?: string;
+  password?: string;
   status: 'pending' | 'approved' | 'rejected';
   // Add other fields from the registration form
   fullName: string;
@@ -346,10 +377,11 @@ export type VendorApplication = {
   city: string;
   rcNumber?: string;
   businessDescription: string;
-  uid: string;
+  uid: string | null;
   submittedAt: any;
   address: string;
   categories: string[];
+  referralCode?: string;
   idCardFront?: string;
   idCardBack?: string;
   passportPhoto?: string;
@@ -367,6 +399,7 @@ export type Order = {
 export type Transaction = {
   id: string;
   vendorId: string; // Can be vendorId or providerId
+  uid: string; // The auth UID of the provider
   description: string;
   amount: number;
   status: 'successful';
@@ -379,12 +412,13 @@ export type Notification = {
     recipientId: string;
     senderId: string;
     senderName: string;
-    type: 'review' | 'reply' | 'application_approved' | 'kyc_approved' | 'kyc_rejected' | 'product_uploaded' | 'product_status_changed' | 'product_deleted' | 'product_boosted' | 'profile_view_milestone';
+    type: 'review' | 'reply' | 'application_approved' | 'kyc_approved' | 'kyc_rejected' | 'product_uploaded' | 'product_status_changed' | 'product_deleted' | 'product_boosted' | 'profile_view_milestone' | 'payout_request' | 'referral_bonus' | 'profile_update_request' | 'profile_update_approved' | 'profile_update_rejected';
     productId?: string;
     productName?: string;
     text: string;
     isRead: boolean;
     timestamp: any;
+    amount?: number;
 }
 
 export type FilterState = {
@@ -395,6 +429,16 @@ export type FilterState = {
   product: string;
 };
 
+export type ProfileUpdateRequest = {
+  id: string;
+  providerId: string;
+  uid: string;
+  providerType: ProviderType;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: any;
+  data: any; // The new profile data
+};
+
 export async function createNotification(notification: Omit<Notification, 'id'>) {
     try {
         await addDoc(collection(db, 'notifications'), notification);
@@ -403,24 +447,46 @@ export async function createNotification(notification: Omit<Notification, 'id'>)
     }
 }
 
+// Helper function to convert Firestore Timestamps to strings
+const serializeTimestamps = (data: any) => {
+    for (const key in data) {
+        if (data[key] instanceof Timestamp) {
+            data[key] = data[key].toDate().toISOString();
+        } else if (typeof data[key] === 'object' && data[key] !== null) {
+            serializeTimestamps(data[key]); // Recurse for nested objects
+        }
+    }
+    return data;
+};
+
 
 // --- Firestore Data Fetching Functions ---
-
 export async function fetchUsers(): Promise<UserData[]> {
   try {
     const usersCollection = collection(db, 'users');
-    const snapshot = await getDocs(usersCollection);
-    return snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt?.toDate().toISOString() || null,
-            lastLogin: data.lastLogin?.toDate().toISOString() || null
-        } as UserData;
-    });
+    const userSnapshot = await getDocs(usersCollection);
+    return userSnapshot.docs.map(doc => serializeTimestamps({ id: doc.id, ...doc.data() }) as UserData);
   } catch (error) {
     console.error("Error fetching users:", error);
+    return [];
+  }
+}
+
+export async function fetchUsersByUids(uids: string[]): Promise<UserData[]> {
+  if (!uids || uids.length === 0) return [];
+  try {
+    const users: UserData[] = [];
+    // Firestore 'in' query is limited to 30 elements. We need to batch the requests.
+    for (let i = 0; i < uids.length; i += 30) {
+      const batchUids = uids.slice(i, i + 30);
+      const q = query(collection(db, 'users'), where('uid', 'in', batchUids));
+      const snapshot = await getDocs(q);
+      const batchUsers = snapshot.docs.map(doc => serializeTimestamps({ id: doc.id, ...doc.data() }) as UserData);
+      users.push(...batchUsers);
+    }
+    return users;
+  } catch (error) {
+    console.error("Error fetching users by UIDs:", error);
     return [];
   }
 }
@@ -469,7 +535,7 @@ export async function fetchServiceProviderById(id: string): Promise<ServiceProvi
     const docRef = doc(db, 'serviceProviders', id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as ServiceProvider;
+      return serializeTimestamps({ id: docSnap.id, ...docSnap.data() }) as ServiceProvider;
     }
     return null;
   } catch (error) {
@@ -501,7 +567,7 @@ export async function fetchLogisticsCompanyById(id: string): Promise<LogisticsCo
     const docRef = doc(db, 'logisticsCompanies', id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as LogisticsCompany;
+      return serializeTimestamps({ id: docSnap.id, ...docSnap.data() }) as LogisticsCompany;
     }
     return null;
   } catch (error) {
@@ -526,7 +592,7 @@ export async function fetchCurrencyExchangeAgentById(id: string): Promise<Curren
     const agentDocRef = doc(db, 'currencyExchangeAgents', id);
     const agentDoc = await getDoc(agentDocRef);
     if (agentDoc.exists()) {
-      return { id: agentDoc.id, ...agentDoc.data() } as CurrencyExchangeAgent;
+      return serializeTimestamps({ id: agentDoc.id, ...agentDoc.data() }) as CurrencyExchangeAgent;
     }
     return null;
   } catch (error) {
@@ -552,7 +618,7 @@ export async function fetchLawyerById(id: string): Promise<Lawyer | null> {
     const lawyerDocRef = doc(db, 'lawyers', id);
     const lawyerDoc = await getDoc(lawyerDocRef);
     if (lawyerDoc.exists()) {
-      return { id: lawyerDoc.id, ...lawyerDoc.data() } as Lawyer;
+      return serializeTimestamps({ id: lawyerDoc.id, ...lawyerDoc.data() }) as Lawyer;
     }
     return null;
   } catch (error) {
@@ -566,7 +632,7 @@ export async function fetchVendors(): Promise<Vendor[]> {
   try {
     const vendorsCollection = collection(db, 'vendors');
     const vendorSnapshot = await getDocs(vendorsCollection);
-    return vendorSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Vendor[];
+    return vendorSnapshot.docs.map(doc => serializeTimestamps({ id: doc.id, ...doc.data() }) as Vendor);
   } catch (error) {
     console.error("Error fetching vendors:", error);
     return [];
@@ -575,14 +641,12 @@ export async function fetchVendors(): Promise<Vendor[]> {
 
 export async function fetchVendorById(id: string): Promise<Vendor | null> {
   try {
-    // First, try to get by document ID
     const vendorDocRef = doc(db, 'vendors', id);
     const vendorDoc = await getDoc(vendorDocRef);
     if (vendorDoc.exists()) {
-      return { id: vendorDoc.id, ...vendorDoc.data() } as Vendor;
+      return serializeTimestamps({ id: vendorDoc.id, ...vendorDoc.data() }) as Vendor;
     }
     
-    // If not found by ID, try to find by UID, as some old records might use UID as ID
     const vendorsByUid = await fetchVendorByUid(id);
     if(vendorsByUid) return vendorsByUid;
 
@@ -595,11 +659,11 @@ export async function fetchVendorById(id: string): Promise<Vendor | null> {
 
 export async function fetchVendorByUid(uid: string): Promise<Vendor | null> {
     try {
-        const q = query(collection(db, "vendors"), where("uid", "==", uid));
+        const q = query(collection(db, "vendors"), where("uid", "==", uid), limit(1));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
             const vendorDoc = querySnapshot.docs[0];
-            return { id: vendorDoc.id, ...vendorDoc.data() } as Vendor;
+            return serializeTimestamps({ id: vendorDoc.id, ...vendorDoc.data() }) as Vendor;
         }
         return null;
     } catch (error) {
@@ -610,16 +674,10 @@ export async function fetchVendorByUid(uid: string): Promise<Vendor | null> {
 
 export async function fetchUserByUid(uid: string): Promise<UserData | null> {
     try {
-        const userDocRef = doc(db, 'users', uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-            const data = userDoc.data();
-            return {
-                id: userDoc.id,
-                ...data,
-                createdAt: data.createdAt?.toDate().toISOString() || null,
-                lastLogin: data.lastLogin?.toDate().toISOString() || null
-            } as UserData;
+        const userRef = doc(db, 'users', uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+            return serializeTimestamps({ id: userSnap.id, ...userSnap.data() }) as UserData;
         }
         return null;
     } catch (error) {
@@ -700,7 +758,8 @@ export async function fetchReviewsByProductId(productId: string): Promise<Review
         for(const doc of reviewSnapshot.docs) {
             const reviewData = { id: doc.id, ...doc.data() } as Review;
             const repliesCollection = collection(db, 'products', productId, 'reviews', doc.id, 'replies');
-            const repliesSnapshot = await getDocs(query(repliesCollection));
+            const repliesQuery = query(repliesCollection);
+            const repliesSnapshot = await getDocs(repliesQuery);
             reviewData.replies = repliesSnapshot.docs.map(replyDoc => ({ id: replyDoc.id, ...replyDoc.data() } as Reply));
             reviews.push(reviewData);
         }
@@ -736,14 +795,14 @@ export async function fetchPendingLawyerApplications(): Promise<LawyerApplicatio
 }
 
 export async function fetchPendingLogisticsApplications(): Promise<LogisticsApplication[]> {
-    try {
-        const q = query(collection(db, "logisticsApplications"), where("status", "==", "pending"));
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as LogisticsApplication[];
-    } catch (error) {
-        console.error("Error fetching pending logistics applications:", error);
-        return [];
-    }
+  try {
+    const q = query(collection(db, "logisticsApplications"), where("status", "==", "pending"));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as LogisticsApplication[];
+  } catch (error) {
+    console.error("Error fetching pending logistics applications:", error);
+    return [];
+  }
 }
 
 
@@ -796,10 +855,11 @@ export async function fetchOrdersByUserId(userId: string): Promise<Order[]> {
     }
 }
 
-export async function createTransaction(vendorId: string, description: string, amount: number, providerType: string) {
+export async function createTransaction(vendorId: string, uid: string, description: string, amount: number, providerType: string) {
     try {
         await addDoc(collection(db, "transactions"), {
             vendorId,
+            uid,
             description,
             amount,
             status: 'successful',
@@ -812,13 +872,18 @@ export async function createTransaction(vendorId: string, description: string, a
     }
 }
 
-export async function fetchTransactionsByVendorId(vendorId: string): Promise<Transaction[]> {
+
+export async function fetchTransactionsByVendorId(vendorId: string, uid: string): Promise<Transaction[]> {
     try {
-        const q = query(collection(db, 'transactions'), where('vendorId', '==', vendorId));
+        const q = query(
+            collection(db, 'transactions'), 
+            where('vendorId', '==', vendorId),
+            where('uid', '==', uid), 
+            orderBy('timestamp', 'desc')
+        );
         const querySnapshot = await getDocs(q);
         const transactions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Transaction[];
-        // Sort on the client-side to avoid composite index
-        return transactions.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+        return transactions;
     } catch (error) {
         console.error("Error fetching transactions by vendor ID:", error);
         return [];
@@ -828,7 +893,7 @@ export async function fetchTransactionsByVendorId(vendorId: string): Promise<Tra
 export type ProviderType = 'vendor' | 'lawyer' | 'logistics' | 'currency-exchange' | 'service' | null;
 
 export async function getUserProviderRole(uid: string): Promise<{ type: ProviderType, id: string | null }> {
-    const collections: { [key: string]: ProviderType } = {
+    const collections: Record<string, ProviderType> = {
         'vendors': 'vendor',
         'lawyers': 'lawyer',
         'logisticsCompanies': 'logistics',
@@ -838,66 +903,80 @@ export async function getUserProviderRole(uid: string): Promise<{ type: Provider
 
     for (const collectionName in collections) {
         const q = query(collection(db, collectionName), where("uid", "==", uid), limit(1));
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-            return { type: collections[collectionName], id: snapshot.docs[0].id };
+        try {
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+                return { type: collections[collectionName], id: snapshot.docs[0].id };
+            }
+        } catch (error) {
+            // This can happen if rules deny the query, which is fine. We just continue.
+            // console.warn(`Could not query ${collectionName} for UID ${uid}. It might be a permissions issue, which is expected for non-admins.`);
         }
     }
 
     return { type: null, id: null };
 }
 
-export async function checkIfUserIsAlreadyProvider(uid: string): Promise<boolean> {
-  const { type } = await getUserProviderRole(uid);
-  if (type) return true;
+export async function checkIfUserHasPendingApplication(uid: string): Promise<string | null> {
+    const applicationCollections = {
+        'vendorApplications': 'Vendor',
+        'lawyerApplications': 'Lawyer',
+        'logisticsApplications': 'Logistics Partner',
+        'currencyExchangeApplications': 'Currency Exchange Agent',
+        'serviceProviderApplications': 'Service Provider',
+    };
 
-  // Also check pending applications
-  const applicationCollections = [
-    'vendorApplications', 'lawyerApplications', 'logisticsApplications', 
-    'currencyExchangeApplications', 'serviceProviderApplications'
-  ];
-
-  for (const collectionName of applicationCollections) {
-    const q = query(collection(db, collectionName), where("uid", "==", uid), where("status", "==", "pending"));
-    const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-      return true; // Found a pending application
+    for (const [collectionName, type] of Object.entries(applicationCollections)) {
+        try {
+            const q = query(collection(db, collectionName), where("uid", "==", uid), where("status", "==", "pending"), limit(1));
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+                return type; // Return the user-friendly type name
+            }
+        } catch (error) {
+             // console.warn(`Could not query ${collectionName} for pending applications for UID ${uid}. It might be a permissions issue, which is expected for non-admins.`);
+        }
     }
-  }
 
-  return false;
+    return null;
 }
 
 export async function fetchProviderDataByUid(uid: string): Promise<{ providerData: any | null, type: string | null, transactions: Transaction[] }> {
-    const providerCollections = {
-        'serviceProviders': 'service', 
-        'lawyers': 'lawyer', 
-        'logisticsCompanies': 'logistics', 
-        'currencyExchangeAgents': 'currency-exchange',
-        'vendors': 'vendor'
-    };
-    for (const [collectionName, type] of Object.entries(providerCollections)) {
-        const q = query(collection(db, collectionName), where("uid", "==", uid), limit(1));
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-            const doc = snapshot.docs[0];
-            const providerData = { id: doc.id, ...doc.data() };
-            const transactions = await fetchTransactionsByVendorId(doc.id);
+    const { type, id } = await getUserProviderRole(uid);
+
+    if (type && id) {
+        const collectionNameMapping: Record<string, string> = {
+            'vendor': 'vendors',
+            'lawyer': 'lawyers',
+            'logistics': 'logisticsCompanies',
+            'currency-exchange': 'currencyExchangeAgents',
+            'service': 'serviceProviders'
+        };
+        
+        const collectionName = collectionNameMapping[type];
+        const docRef = doc(db, collectionName, id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const providerData = { id: docSnap.id, ...docSnap.data() };
+            const transactions = await fetchTransactionsByVendorId(id, uid);
             return { providerData, type, transactions };
         }
     }
+
     return { providerData: null, type: null, transactions: [] };
 }
+
 
 export async function fetchNotifications(uid: string): Promise<Notification[]> {
     const q = query(
         collection(db, "notifications"),
-        where("recipientId", "==", uid)
+        where("recipientId", "==", uid),
+        orderBy("timestamp", "desc")
     );
     const snapshot = await getDocs(q);
     const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Notification[];
-    // Sort on the client side
-    return notifications.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+    return notifications;
 }
 
 export async function markAllNotificationsAsRead(uid: string): Promise<void> {
@@ -918,26 +997,154 @@ export async function markAllNotificationsAsRead(uid: string): Promise<void> {
 
 
 /**
- * Checks if a given value for a field already exists in a collection.
- * @param collections - An array of collection names to check in.
- * @param fieldName - The name of the field to check.
- * @param value - The value to check for.
- * @returns {Promise<boolean>} - True if the value exists, false otherwise.
+ * Checks if a given email is already in use by an existing user account.
+ * @param email The email to check.
+ * @returns True if the email is in use, false otherwise.
  */
-export async function checkIfValueExists(collections: string[], fieldName: string, value: string): Promise<boolean> {
-    if (!value) return false; // Don't check for empty strings
-
-    for (const collectionName of collections) {
-        const q = query(collection(db, collectionName), where(fieldName, "==", value), limit(1));
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-            return true; // Value exists
-        }
-    }
-    return false; // Value does not exist in any of the collections
+export async function checkIfEmailExists(email: string): Promise<boolean> {
+  if (!email) return false;
+  try {
+    const methods = await fetchSignInMethodsForEmail(auth, email);
+    return methods.length > 0;
+  } catch (error) {
+    console.error("Error checking if email exists:", error);
+    // In case of an error, assume it doesn't exist to allow signup attempt,
+    // which will then fail with a more specific auth error if needed.
+    return false;
+  }
 }
 
 
+export type PayoutRequest = {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  amount: number;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  status: 'pending' | 'paid' | 'rejected';
+  requestedAt: any;
+  paidAt?: any;
+  rejectionReason?: string;
+};
+
+
+export async function createPayoutRequest(requestData: Omit<PayoutRequest, 'id' | 'status' | 'requestedAt'>) {
+    const userRef = doc(db, 'users', requestData.userId);
+    const payoutRequestRef = doc(collection(db, 'payoutRequests'));
+
+    await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) {
+            throw "User does not exist!";
+        }
+        
+        // Deduct balance from user
+        transaction.update(userRef, { referralBalance: 0 });
+        
+        // Create payout request
+        transaction.set(payoutRequestRef, {
+             ...requestData,
+            status: 'pending',
+            requestedAt: serverTimestamp(),
+        });
+    });
+
+    // Also notify the admin
+    await createNotification({
+        recipientId: 'WSrXKwyNEAb4Ib7fBM85OP9S63G3', // Admin UID
+        senderId: requestData.userId,
+        senderName: requestData.userName,
+        type: 'payout_request',
+        text: `${requestData.userName} has requested a payout of ₦${requestData.amount.toLocaleString()}.`,
+        isRead: false,
+        timestamp: serverTimestamp(),
+        amount: requestData.amount,
+    });
+}
+    
+export async function fetchPendingProfileUpdates(): Promise<ProfileUpdateRequest[]> {
+  const collections = [
+    'vendorProfileUpdateRequests',
+    'lawyerProfileUpdateRequests',
+    'logisticsProfileUpdateRequests',
+    'currencyExchangeProfileUpdateRequests',
+    'serviceProfileUpdateRequests'
+  ];
+  const allRequests: ProfileUpdateRequest[] = [];
+
+  for (const collectionName of collections) {
+    try {
+      const q = query(collection(db, collectionName), where("status", "==", "pending"));
+      const snapshot = await getDocs(q);
+      const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProfileUpdateRequest));
+      allRequests.push(...requests);
+    } catch (error) {
+      console.error(`Error fetching from ${collectionName}:`, error);
+    }
+  }
+
+  return allRequests.sort((a, b) => (b.requestedAt?.seconds || 0) - (a.requestedAt?.seconds || 0));
+}
+
+
+export async function createProfileUpdateRequest(providerType: ProviderType, providerId: string, uid: string, data: any) {
+  if (!providerType) throw new Error("Invalid provider type for update request.");
+  
+  const collectionNameMapping: Record<string, string> = {
+    'vendor': 'vendorProfileUpdateRequests',
+    'lawyer': 'lawyerProfileUpdateRequests',
+    'logistics': 'logisticsProfileUpdateRequests',
+    'currency-exchange': 'currencyExchangeProfileUpdateRequests',
+    'service': 'serviceProfileUpdateRequests'
+  };
+  
+  const mainCollectionMapping: Record<string, string> = {
+      'vendor': 'vendors',
+      'lawyer': 'lawyers',
+      'logistics': 'logisticsCompanies',
+      'currency-exchange': 'currencyExchangeAgents',
+      'service': 'serviceProviders'
+  };
+
+  const requestCollectionName = collectionNameMapping[providerType];
+  const mainCollectionName = mainCollectionMapping[providerType];
+
+  const batch = writeBatch(db);
+
+  // 1. Create the update request document
+  const requestRef = doc(collection(db, requestCollectionName));
+  batch.set(requestRef, {
+    providerId,
+    uid,
+    providerType,
+    status: 'pending',
+    requestedAt: serverTimestamp(),
+    data
+  });
+
+  // 2. Update the main provider document
+  const providerRef = doc(db, mainCollectionName, providerId);
+  batch.update(providerRef, {
+    profileUpdateStatus: 'pending',
+    lastProfileUpdateRequest: serverTimestamp()
+  });
+
+  await batch.commit();
+
+  // 3. Notify admin (optional, but good practice)
+  await createNotification({
+    recipientId: 'WSrXKwyNEAb4Ib7fBM85OP9S63G3', // Special admin ID
+    senderId: uid,
+    senderName: data.name || data.fullName || data.businessName,
+    type: 'profile_update_request',
+    text: `A profile update request has been submitted by ${data.name || data.fullName || data.businessName}.`,
+    isRead: false,
+    timestamp: serverTimestamp(),
+  });
+}
 // --- Static Data (can be kept or moved) ---
 export const productCategories = [
     { id: 'computers', name: 'Computers' },

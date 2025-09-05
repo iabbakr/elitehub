@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -18,24 +19,24 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, addDoc, serverTimestamp, doc, setDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, setDoc, doc, writeBatch } from "firebase/firestore";
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { nigerianStates, productCategories, fetchUserByUid, checkIfUserIsAlreadyProvider, checkIfValueExists } from '@/lib/data';
+import { nigerianStates, productCategories, checkIfEmailExists } from '@/lib/data';
 import { Checkbox } from '@/components/ui/checkbox';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { sendWelcomeEmail } from '@/lib/email';
-
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { handleReferralOnSignup } from '@/app/actions/adminActions';
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Full name is required."),
   email: z.string().email("A valid email is required."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
+  password: z.string().optional(),
+  confirmPassword: z.string().optional(),
   phoneNumber: z.string().min(10, "Please enter a valid phone number."),
   whatsappNumber: z.string().optional(),
   vendorName: z.string().min(2, "Vendor name must be at least 2 characters."),
@@ -54,7 +55,20 @@ const formSchema = z.object({
   terms: z.boolean().refine(value => value === true, {
     message: 'You must agree to the terms and conditions.',
   }),
+}).refine(data => {
+    if (auth.currentUser) return true;
+    return data.password === data.confirmPassword;
+}, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"],
+}).refine(data => {
+    if (auth.currentUser) return true;
+    return data.password && data.password.length >= 8;
+}, {
+    message: "Password must be at least 8 characters.",
+    path: ["password"],
 });
+
 
 const vendorProductCategories = productCategories.filter(
     cat => cat.id !== 'find-a-lawyer' && cat.id !== 'currency-exchange' && cat.id !== 'logistics' && cat.id !== 'services'
@@ -62,103 +76,94 @@ const vendorProductCategories = productCategories.filter(
 
 export default function RegisterPage() {
   const { toast } = useToast();
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
+  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: '',
-      email: '',
-      password: '',
-      phoneNumber: '',
-      whatsappNumber: '',
-      vendorName: '',
-      username: '',
-      address: '',
-      city: '',
-      rcNumber: '',
-      referralCode: '',
-      businessDescription: '',
-      categories: [],
-      terms: false,
+      fullName: '', email: '', password: '', confirmPassword: '', phoneNumber: '', whatsappNumber: '',
+      vendorName: '', username: '', address: '', city: '', rcNumber: '',
+      referralCode: '', businessDescription: '', categories: [], terms: false,
     },
   });
+  
+  useEffect(() => {
+    if (user) {
+      form.setValue('email', user.email || '');
+      form.setValue('fullName', user.displayName || '');
+    }
+  }, [user, form]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
+    let userId = user?.uid;
 
     try {
-      // Uniqueness checks for application data
-      const collectionsToCheck = ['vendors', 'vendorApplications'];
-      const checks = [
-          { field: 'vendorName', value: values.vendorName, label: 'Vendor Name' },
-          { field: 'phoneNumber', value: values.phoneNumber, label: 'Phone Number' },
-          { field: 'whatsappNumber', value: values.whatsappNumber, label: 'WhatsApp Number' },
-          { field: 'rcNumber', value: values.rcNumber, label: 'RC Number' }
-      ];
+        if (!user) {
+            if (!values.password) {
+                 toast({ variant: 'destructive', title: 'Submission Failed', description: "Password is required for new accounts." });
+                 setIsSubmitting(false);
+                 return;
+            }
+            const emailExists = await checkIfEmailExists(values.email);
+            if (emailExists) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Email Already in Use',
+                    description: 'An account with this email already exists. Please log in first, or use a different email.'
+                });
+                setIsSubmitting(false);
+                return;
+            }
 
-      for (const check of checks) {
-          if (check.value && await checkIfValueExists(collectionsToCheck, check.field, check.value)) {
-              toast({ variant: 'destructive', title: 'Duplicate Information', description: `${check.label} "${check.value}" is already in use.` });
-              setIsSubmitting(false);
-              return;
-          }
-      }
+            const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+            userId = userCredential.user.uid;
+            
+            await updateProfile(userCredential.user, { displayName: values.fullName });
 
-      // Create Firebase Auth user first
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-
-      // Create the user document in 'users' collection
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        fullName: values.fullName,
-        email: user.email,
-        createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
-      });
+            await handleReferralOnSignup({ 
+                newUserUid: userId, 
+                newUserFullName: values.fullName, 
+                newUserEmail: values.email,
+                referralCode: values.referralCode 
+            });
+        }
       
-      // Submit the vendor application
+      const { password, confirmPassword, ...applicationData } = values;
+
       await addDoc(collection(db, "vendorApplications"), {
-        uid: user.uid, 
-        fullName: values.fullName,
-        email: values.email,
-        phoneNumber: values.phoneNumber,
-        whatsappNumber: values.whatsappNumber,
-        vendorName: values.vendorName,
-        username: values.username,
-        address: values.address,
-        city: values.city,
-        location: values.location,
-        referralCode: values.referralCode,
-        rcNumber: values.rcNumber,
-        businessDescription: values.businessDescription,
-        categories: values.categories,
+        ...applicationData,
+        uid: userId,
         status: 'pending',
         submittedAt: serverTimestamp(),
       });
       
-      // We don't send a welcome email here, it will be sent upon approval.
-
       toast({
         title: 'Application Submitted!',
-        description: 'Your vendor application is now under review. We will notify you via email once approved. You have been logged in.',
+        description: 'Your vendor application is under review. You can now browse the app while you wait.',
       });
       
-      // router.push('/profile'); // This will redirect them to their new (but basic) user profile.
+      if (!user && values.password) {
+        await signInWithEmailAndPassword(auth, values.email, values.password);
+      }
+      
+      router.push('/');
 
     } catch (error: any) {
       console.error("Application Submission Error:", error);
       let errorMessage = 'An unexpected error occurred. Please try again.';
       if (error.code === 'auth/email-already-in-use') {
-        errorMessage = "This email is already in use. Please log in or use a different email.";
+        errorMessage = "This email address is already associated with an account. Please log in first.";
+      } else if (error.code === 'permission-denied') {
+        errorMessage = 'You do not have permission to perform this action. Please check your login status or contact support.';
       }
-      toast({
-        variant: 'destructive',
-        title: 'Submission Failed',
-        description: errorMessage,
-      });
+      toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -170,269 +175,55 @@ export default function RegisterPage() {
         <CardHeader>
           <CardTitle className="text-3xl font-bold font-headline">Become a Vendor</CardTitle>
           <CardDescription>
-            Join our trusted network of vendors.
+            {user ? "You are already signed in. Fill out the form below to apply." : "Join our trusted network of vendors. Fill out the form to get started."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <FormField
-                  control={form.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Username</FormLabel>
-                      <FormControl>
-                        <Input placeholder="johndoe" {...field} />
-                      </FormControl>
-                       <FormDescription>Your unique name on EliteHub.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="you@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="********" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phoneNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="(123) 456-7890" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="whatsappNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>WhatsApp Number (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. 2348012345678" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        Start with country code (e.g., 234 for Nigeria).
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="vendorName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Vendor Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Artisan Goods Co." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="rcNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>RC Number (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter 7-digit RC number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                 <FormField control={form.control} name="fullName" render={({ field }) => ( <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name="username" render={({ field }) => ( <FormItem><FormLabel>Username</FormLabel><FormControl><Input placeholder="johndoe" {...field} /></FormControl><FormDescription>Your unique name on EliteHub.</FormDescription><FormMessage /></FormItem>)} />
               </div>
-               <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Business Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="123 Main Street" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>City</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. Ikeja" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="location"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State</FormLabel>
-                          <FormControl>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select your state of operation" />
-                                </SelectTrigger>
-                              <SelectContent>
-                                {nigerianStates.map((state) => (
-                                  <SelectItem key={state} value={state}>
-                                    {state}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={!!user} /></FormControl><FormMessage /></FormItem>)} />
+              </div>
+              {!user && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField control={form.control} name="password" render={({ field }) => ( <FormItem><FormLabel>Password</FormLabel><FormControl><div className="relative"><Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} /><Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(prev => !prev)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button></div></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="confirmPassword" render={({ field }) => ( <FormItem><FormLabel>Confirm Password</FormLabel><FormControl><div className="relative"><Input type={showConfirmPassword ? 'text' : 'password'} placeholder="********" {...field} /><Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowConfirmPassword(prev => !prev)}>{showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button></div></FormControl><FormMessage /></FormItem>)} />
                 </div>
-                 <FormField
-                  control={form.control}
-                  name="referralCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Referral Code (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter code from an existing vendor" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-               <FormField
-                  control={form.control}
-                  name="businessDescription"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Business Description</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Describe your business and the products you sell." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="categories"
-                  render={() => (
-                    <FormItem>
-                      <div className="mb-4">
-                        <FormLabel className="text-base">Business Categories</FormLabel>
-                        <FormDescription>
-                          Select up to 5 categories that best describe your products.
-                        </FormDescription>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {vendorProductCategories.map((item) => (
-                           <FormField
-                            key={item.id}
-                            control={form.control}
-                            name="categories"
-                            render={({ field }) => (
-                              <FormItem
-                                key={item.id}
-                                className="flex flex-row items-start space-x-3 space-y-0"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(item.id)}
-                                    onCheckedChange={(checked) => {
-                                      return checked
-                                        ? field.onChange([...(field.value || []), item.id])
-                                        : field.onChange(
-                                            field.value?.filter(
-                                              (value) => value !== item.id
-                                            )
-                                          )
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  {item.name}
-                                </FormLabel>
-                              </FormItem>
-                            )}
-                          />
-                        ))}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                 <FormField
-                  control={form.control}
-                  name="terms"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          I agree to Elitehub’s <Link href="/terms" className="text-primary hover:underline" target="_blank">Terms and Conditions</Link> and <Link href="/privacy" className="text-primary hover:underline" target="_blank">Privacy Policy</Link>.
-                        </FormLabel>
-                         <FormMessage />
-                      </div>
-                    </FormItem>
-                  )}
-                />
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="(123) 456-7890" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="whatsappNumber" render={({ field }) => ( <FormItem><FormLabel>WhatsApp Number (Optional)</FormLabel><FormControl><Input placeholder="e.g. 2348012345678" {...field} /></FormControl><FormDescription>Start with country code.</FormDescription><FormMessage /></FormItem>)} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={form.control} name="vendorName" render={({ field }) => ( <FormItem><FormLabel>Vendor Name</FormLabel><FormControl><Input placeholder="e.g. Artisan Goods Co." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="rcNumber" render={({ field }) => ( <FormItem><FormLabel>RC Number (Optional)</FormLabel><FormControl><Input placeholder="Enter 7-digit RC number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              </div>
+              <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Business Address</FormLabel><FormControl><Input placeholder="123 Main Street" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>City</FormLabel><FormControl><Input placeholder="e.g. Ikeja" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name="location" render={({ field }) => ( <FormItem><FormLabel>State</FormLabel><FormControl><Select onValueChange={field.onChange} defaultValue={field.value}><SelectTrigger><SelectValue placeholder="Select your state of operation" /></SelectTrigger><SelectContent>{nigerianStates.map((state) => (<SelectItem key={state} value={state}>{state}</SelectItem>))}</SelectContent></Select></FormControl><FormMessage /></FormItem>)} />
+              </div>
+              <FormField control={form.control} name="referralCode" render={({ field }) => ( <FormItem><FormLabel>Referral Code (Optional)</FormLabel><FormControl><Input placeholder="Enter code from an existing user" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="businessDescription" render={({ field }) => ( <FormItem><FormLabel>Business Description</FormLabel><FormControl><Textarea placeholder="Describe your business and the products you sell." {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField
+                control={form.control}
+                name="categories"
+                render={() => (
+                  <FormItem>
+                    <div className="mb-4"><FormLabel className="text-base">Business Categories</FormLabel><FormDescription>Select up to 5 categories that best describe your products.</FormDescription></div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {vendorProductCategories.map((item) => (
+                          <FormField key={item.id} control={form.control} name="categories" render={({ field }) => (<FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0"><FormControl><Checkbox checked={field.value?.includes(item.id)} onCheckedChange={(checked) => {return checked ? field.onChange([...(field.value || []), item.id]) : field.onChange(field.value?.filter((value) => value !== item.id))}} /></FormControl><FormLabel className="font-normal">{item.name}</FormLabel></FormItem>)} />
+                      ))}
+                    </div><FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField control={form.control} name="terms" render={({ field }) => ( <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>I agree to Elitehub’s <Link href="/terms" className="text-primary hover:underline" target="_blank">Terms and Conditions</Link> and <Link href="/privacy" className="text-primary hover:underline" target="_blank">Privacy Policy</Link>.</FormLabel><FormMessage /></div></FormItem>)} />
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmitting ? 'Submitting...' : 'Apply for Review'}

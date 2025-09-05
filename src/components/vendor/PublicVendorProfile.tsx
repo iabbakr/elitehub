@@ -91,11 +91,11 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
     trackViewAndNotify();
 
     const ratedVendors = JSON.parse(localStorage.getItem('rated-vendors') || '{}');
-    if (ratedVendors[vendor.id]) {
+    if (user && ratedVendors[user.uid]?.includes(vendor.id)) {
         setHasRated(true);
     }
 
-  }, [vendor.id, vendor.uid]);
+  }, [vendor.id, vendor.uid, user]);
 
   const handleRatingSubmit = async (newRating: number) => {
     if (!user) {
@@ -146,7 +146,10 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
         
         // Mark as rated in localStorage
         const ratedVendors = JSON.parse(localStorage.getItem('rated-vendors') || '{}');
-        ratedVendors[vendor.id] = true;
+        if (!ratedVendors[user.uid]) {
+            ratedVendors[user.uid] = [];
+        }
+        ratedVendors[user.uid].push(vendor.id);
         localStorage.setItem('rated-vendors', JSON.stringify(ratedVendors));
         setHasRated(true);
 

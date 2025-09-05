@@ -141,12 +141,17 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
     const boostExpirationDate = add(new Date(), { days: plan.days }).toISOString();
     const productRef = doc(db, 'products', product.id);
     const vendor = getVendor(product.vendorId);
+    if (!vendor?.uid) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not find vendor information to complete transaction.' });
+        return;
+    }
 
     try {
         await updateDoc(productRef, { boostedUntil: boostExpirationDate });
         
         await createTransaction(
             product.vendorId,
+            vendor.uid,
             `Product Boost: ${product.name} (${plan.label})`,
             plan.price,
             'vendor'

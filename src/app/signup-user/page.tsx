@@ -16,15 +16,17 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useState, Suspense } from 'react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { auth, db, googleProvider } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from 'firebase/auth';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { doc, setDoc, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { sendWelcomeEmail } from '@/lib/email';
+import { checkIfEmailExists } from '@/lib/data';
+import { handleReferralOnSignup } from '@/app/actions/adminActions';
+
 
 const GoogleIcon = () => (
     <svg className="mr-2 h-4 w-4" viewBox="0 0 48 48">
@@ -35,23 +37,29 @@ const GoogleIcon = () => (
     </svg>
 );
 
+
 const formSchema = z.object({
-  fullName: z.string().min(2, {
-    message: 'Full name must be at least 2 characters.',
-  }),
-  email: z.string().email({
-    message: 'Please enter a valid email address.',
-  }),
-  password: z.string().min(8, {
-    message: 'Password must be at least 8 characters.',
-  }),
+  fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
+  email: z.string().email('Please enter a valid email address.'),
+  password: z.string().min(8, 'Password must be at least 8 characters.'),
+  confirmPassword: z.string(),
+  referralCode: z.string().optional(),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords do not match.",
+  path: ["confirmPassword"],
 });
 
-export default function SignupUserPage() {
+
+function SignupUserFormComponent() {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const refCodeFromUrl = searchParams.get('ref');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -59,6 +67,8 @@ export default function SignupUserPage() {
       fullName: '',
       email: '',
       password: '',
+      confirmPassword: '',
+      referralCode: refCodeFromUrl || '',
     },
   });
 
@@ -67,40 +77,24 @@ export default function SignupUserPage() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (!userDoc.exists()) {
-        await setDoc(userDocRef, {
-          uid: user.uid,
-          fullName: user.displayName,
-          email: user.email,
-          createdAt: serverTimestamp(),
-          lastLogin: serverTimestamp(),
-        });
-         toast({
-          title: 'Account Created!',
-          description: `Welcome, ${user.displayName || 'User'}!`,
-        });
-        await sendWelcomeEmail(user.email!, user.displayName!);
-      } else {
-        // User already exists, just update their last login
-        await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
-        toast({
-          title: 'Sign In Successful!',
-          description: `Welcome back, ${user.displayName || 'User'}!`,
-        });
-      }
-      
+       await handleReferralOnSignup({ 
+        newUserUid: user.uid, 
+        newUserFullName: user.displayName || 'New User', 
+        newUserEmail: user.email!,
+        referralCode: searchParams.get('ref')
+      });
+      await sendWelcomeEmail(user.email!, user.displayName!);
+      toast({
+        title: 'Account Created!',
+        description: 'Welcome to EliteHub. You have been signed in.',
+      });
       router.push('/');
-
     } catch (error: any) {
-      console.error("Google Sign-Up Error:", error);
+      console.error("Google Sign-In Error:", error);
       toast({
         variant: 'destructive',
-        title: 'Google Sign-Up Failed',
-        description: 'Could not sign up with Google. Please try again.',
+        title: 'Google Sign-In Failed',
+        description: 'Could not sign in with Google. Please try again.',
       });
     } finally {
       setIsGoogleSubmitting(false);
@@ -111,23 +105,33 @@ export default function SignupUserPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
+      const emailExists = await checkIfEmailExists(values.email);
+      if (emailExists) {
+          toast({
+              variant: 'destructive',
+              title: 'Email Already in Use',
+              description: 'An account with this email already exists. Please log in or use a different email.'
+          });
+          setIsSubmitting(false);
+          return;
+      }
+      
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
+      await updateProfile(user, { displayName: values.fullName });
 
-      // Also create a document in 'users' collection to store user info
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        fullName: values.fullName,
-        email: user.email,
-        createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
+      await handleReferralOnSignup({ 
+        newUserUid: user.uid, 
+        newUserFullName: values.fullName, 
+        newUserEmail: values.email,
+        referralCode: values.referralCode 
       });
-      
-      await sendWelcomeEmail(values.email, values.fullName);
 
+      await sendWelcomeEmail(values.email, values.fullName);
+      
       toast({
         title: 'Account Created!',
-        description: 'You have successfully signed up.',
+        description: 'Welcome to EliteHub. You have been signed in.',
       });
       router.push('/');
     } catch (error: any) {
@@ -158,7 +162,7 @@ export default function SignupUserPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
+               <FormField
                 control={form.control}
                 name="fullName"
                 render={({ field }) => (
@@ -191,7 +195,55 @@ export default function SignupUserPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="********" {...field} />
+                      <div className="relative">
+                        <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                          onClick={() => setShowPassword(prev => !prev)}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                          onClick={() => setShowConfirmPassword(prev => !prev)}
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+                <FormField
+                control={form.control}
+                name="referralCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Referral Code (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter a referral code if you have one" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -199,26 +251,26 @@ export default function SignupUserPage() {
               />
               <Button type="submit" className="w-full" disabled={isSubmitting || isGoogleSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmitting ? 'Creating Account...' : 'Sign Up'}
+                {isSubmitting ? 'Creating Account...' : 'Create Account'}
               </Button>
             </form>
           </Form>
 
-          <div className="relative my-6">
+           <div className="relative my-6">
               <Separator />
               <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center">
-                <span className="bg-card px-2 text-sm text-muted-foreground">OR CONTINUE WITH</span>
+                <span className="bg-card px-2 text-sm text-muted-foreground">OR</span>
               </div>
-          </div>
-          
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isSubmitting || isGoogleSubmitting}>
-              {isGoogleSubmitting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                  <GoogleIcon />
-              )}
-              Continue with Google
-          </Button>
+            </div>
+
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isSubmitting || isGoogleSubmitting}>
+                {isGoogleSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                    <GoogleIcon />
+                )}
+                Continue with Google
+            </Button>
 
           <div className="mt-6 text-center text-sm">
             Already have an account?{" "}
@@ -230,4 +282,12 @@ export default function SignupUserPage() {
       </Card>
     </div>
   );
+}
+
+export default function SignupUserPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <SignupUserFormComponent />
+        </Suspense>
+    );
 }

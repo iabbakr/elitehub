@@ -200,10 +200,11 @@ function MyProductsPageComponent() {
 
 export default function MyProductsPage() {
     return (
-      <Suspense fallback={<div>Loading...</div>}>
+      <Suspense fallback={<div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
         <MyProductsPageComponent />
       </Suspense>
     );
 }
+
 
 

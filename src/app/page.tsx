@@ -120,27 +120,30 @@ export default function Home() {
     // Otherwise, show VVIP, VIP, and Boosted products
     const featured = allProducts.filter(p => {
         const vendor = getVendor(p.vendorId);
+        if (!vendor) return false;
         const isBoosted = p.boostedUntil && new Date(p.boostedUntil) > new Date();
-        return vendor && (vendor.tier === 'vvip' || vendor.tier === 'vip' || isBoosted);
+        return vendor.tier === 'vvip' || vendor.tier === 'vip' || isBoosted;
     });
 
     featured.sort((a, b) => {
         const vendorA = getVendor(a.vendorId);
         const vendorB = getVendor(b.vendorId);
 
-        const tierOrder = { 'vvip': 3, 'vip': 2 };
-        const tierA = vendorA?.tier ? tierOrder[vendorA.tier as keyof typeof tierOrder] || 0 : 0;
-        const tierB = vendorB?.tier ? tierOrder[vendorB.tier as keyof typeof tierOrder] || 0 : 0;
+        if (!vendorA || !vendorB) return 0;
 
-        if (tierB !== tierA) return tierB - tierA; // Sort by tier first
+        const tierOrder = { 'vvip': 3, 'vip': 2 };
+        const tierA = vendorA.tier ? tierOrder[vendorA.tier as keyof typeof tierOrder] || 0 : 0;
+        const tierB = vendorB.tier ? tierOrder[vendorB.tier as keyof typeof tierOrder] || 0 : 0;
+
+        if (tierB !== tierA) return tierB - tierA; // VVIPs first, then VIPs
 
         const boostedA = a.boostedUntil && new Date(a.boostedUntil) > new Date();
         const boostedB = b.boostedUntil && new Date(b.boostedUntil) > new Date();
 
-        if (boostedB && !boostedA) return 1;
+        if (boostedB && !boostedA) return 1; // Boosted items before non-boosted
         if (!boostedB && boostedA) return -1;
         
-        return 0; // Keep original order if tiers and boost status are the same
+        return 0; // Keep original order if all else is equal
     });
 
     return featured.slice(0, 8);

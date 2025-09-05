@@ -12,7 +12,6 @@ import { Loader2 } from 'lucide-react';
 
 function ChatPageContent() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const { user, loading } = useAuth();
   const [recipientUid, setRecipientUid] = useState<string | null>(null);
   const [isLoadingRecipient, setIsLoadingRecipient] = useState(true);
@@ -87,3 +86,4 @@ export default function ChatPage() {
       </Suspense>
     );
 }
+

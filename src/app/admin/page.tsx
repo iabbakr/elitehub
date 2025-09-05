@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -13,14 +14,23 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, Package, Scale, ArrowRightLeft, Truck, Wrench, Clock, CheckCircle, XCircle, Mail, UserCheck } from 'lucide-react';
-import { fetchPendingApplications, fetchVendors, type VendorApplication, type Vendor, fetchPendingLawyerApplications, type LawyerApplication, type Lawyer, fetchPendingCurrencyExchangeApplications, type CurrencyExchangeApplication, type CurrencyExchangeAgent, fetchPendingLogisticsApplications, type LogisticsApplication, type LogisticsCompany, fetchPendingServiceApplications, type ServiceProviderApplication, type ServiceProvider, fetchLawyers, fetchLogisticsCompanies, fetchCurrencyExchangeAgents, fetchServiceProviders, fetchUsers, type UserData, createNotification, nigerianStates } from '@/lib/data';
-import { getCountFromServer, collection, writeBatch, doc, serverTimestamp, getDocs, where, query, increment } from 'firebase/firestore';
+import { Loader2, Users, Package, Scale, ArrowRightLeft, Truck, Wrench, Clock, CheckCircle, XCircle, Mail, UserCheck, Edit } from 'lucide-react';
+import { 
+    fetchPendingApplications, fetchVendors, type VendorApplication, type Vendor, 
+    fetchPendingLawyerApplications, type LawyerApplication, type Lawyer, 
+    fetchPendingCurrencyExchangeApplications, type CurrencyExchangeApplication, type CurrencyExchangeAgent, 
+    fetchPendingLogisticsApplications, type LogisticsApplication, type LogisticsCompany, 
+    fetchPendingServiceApplications, type ServiceProviderApplication, type ServiceProvider, 
+    fetchLawyers, fetchLogisticsCompanies, fetchCurrencyExchangeAgents, fetchServiceProviders, 
+    fetchUsers, type UserData, nigerianStates, fetchPendingProfileUpdates, type ProfileUpdateRequest,
+} from '@/lib/data';
+import { getCountFromServer, collection, writeBatch, doc, serverTimestamp, getDocs, where, query, increment, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { add } from 'date-fns';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { sendApprovalEmail } from '@/lib/email';
+import { approveApplicationAction } from '@/app/actions/adminActions';
 
 const referralTiers = [
     { count: 10, reward: '10 posts' },
@@ -29,8 +39,9 @@ const referralTiers = [
     { count: 150, reward: 'vvip status' },
 ];
 
+type AnyApplication = VendorApplication | LawyerApplication | CurrencyExchangeApplication | LogisticsApplication | ServiceProviderApplication;
+
 export default function AdminDashboardPage() {
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
   const [applications, setApplications] = useState<VendorApplication[]>([]);
@@ -38,12 +49,14 @@ export default function AdminDashboardPage() {
   const [exchangeApplications, setExchangeApplications] = useState<CurrencyExchangeApplication[]>([]);
   const [logisticsApplications, setLogisticsApplications] = useState<LogisticsApplication[]>([]);
   const [serviceApplications, setServiceApplications] = useState<ServiceProviderApplication[]>([]);
+  const [updateRequests, setUpdateRequests] = useState<ProfileUpdateRequest[]>([]);
   const [allUsers, setAllUsers] = useState<UserData[]>([]);
   const [allVendors, setAllVendors] = useState<Vendor[]>([]);
   const [allLawyers, setAllLawyers] = useState<Lawyer[]>([]);
   const [allLogistics, setAllLogistics] = useState<LogisticsCompany[]>([]);
   const [allExchange, setAllExchange] = useState<CurrencyExchangeAgent[]>([]);
   const [allServices, setAllServices] = useState<ServiceProvider[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [locationFilter, setLocationFilter] = useState('all');
 
@@ -52,10 +65,12 @@ export default function AdminDashboardPage() {
     try {
       const [
         fetchedApplications, fetchedLawyerApplications, fetchedExchangeApplications, fetchedLogisticsApplications, fetchedServiceApplications,
-        fetchedUsers, fetchedVendors, fetchedLawyers, fetchedLogistics, fetchedExchange, fetchedServices,
+        fetchedVendors, fetchedLawyers, fetchedLogistics, fetchedExchange, fetchedServices,
+        fetchedUsers, fetchedUpdateRequests
       ] = await Promise.all([
         fetchPendingApplications(), fetchPendingLawyerApplications(), fetchPendingCurrencyExchangeApplications(), fetchPendingLogisticsApplications(), fetchPendingServiceApplications(),
-        fetchUsers(), fetchVendors(), fetchLawyers(), fetchLogisticsCompanies(), fetchCurrencyExchangeAgents(), fetchServiceProviders(),
+        fetchVendors(), fetchLawyers(), fetchLogisticsCompanies(), fetchCurrencyExchangeAgents(), fetchServiceProviders(),
+        fetchUsers(), fetchPendingProfileUpdates()
       ]);
 
       setApplications(fetchedApplications);
@@ -63,12 +78,13 @@ export default function AdminDashboardPage() {
       setExchangeApplications(fetchedExchangeApplications);
       setLogisticsApplications(fetchedLogisticsApplications);
       setServiceApplications(fetchedServiceApplications);
-      setAllUsers(fetchedUsers);
       setAllVendors(fetchedVendors);
       setAllLawyers(fetchedLawyers);
       setAllLogistics(fetchedLogistics);
       setAllExchange(fetchedExchange);
       setAllServices(fetchedServices);
+      setAllUsers(fetchedUsers);
+      setUpdateRequests(fetchedUpdateRequests);
 
     } catch (error) {
       console.error("Failed to load dashboard data:", error);
@@ -84,10 +100,9 @@ export default function AdminDashboardPage() {
 
   const filteredData = useMemo(() => {
     if (locationFilter === 'all') {
-      return { users: allUsers, vendors: allVendors, lawyers: allLawyers, logistics: allLogistics, exchange: allExchange, services: allServices };
+      return { vendors: allVendors, lawyers: allLawyers, logistics: allLogistics, exchange: allExchange, services: allServices };
     }
     return {
-      users: allUsers, // Users don't have location data in this model
       vendors: allVendors.filter(v => v.location === locationFilter),
       lawyers: allLawyers.filter(l => l.location === locationFilter),
       logistics: allLogistics.filter(l => l.location === locationFilter),
@@ -97,7 +112,7 @@ export default function AdminDashboardPage() {
   }, [locationFilter, allUsers, allVendors, allLawyers, allLogistics, allExchange, allServices]);
 
   const stats = useMemo(() => ({
-    totalUsers: filteredData.users.length,
+    totalUsers: allUsers.length,
     totalVendors: filteredData.vendors.length,
     totalLawyers: filteredData.lawyers.length,
     totalLogistics: filteredData.logistics.length,
@@ -108,55 +123,49 @@ export default function AdminDashboardPage() {
     pendingLogistics: logisticsApplications.length,
     pendingExchange: exchangeApplications.length,
     pendingServices: serviceApplications.length,
-  }), [filteredData, applications, lawyerApplications, exchangeApplications, logisticsApplications, serviceApplications]);
+    pendingUpdates: updateRequests.length,
+  }), [filteredData, applications, lawyerApplications, exchangeApplications, logisticsApplications, serviceApplications, allUsers, updateRequests]);
   
-  const handleApplicationDecision = async (app: any, collectionName: string, targetCollection: string, newProviderData: any, providerType: string) => {
-    const appRef = doc(db, collectionName, app.id);
-    const batch = writeBatch(db);
-    batch.update(appRef, { status: 'approved' });
-
-    const newProviderRef = doc(collection(db, targetCollection));
-    batch.set(newProviderRef, newProviderData);
-
-    await createNotification({
-      recipientId: app.uid,
-      senderId: 'admin',
-      senderName: 'EliteHub Team',
-      type: 'application_approved',
-      text: `Congratulations! Your application to be a ${providerType} has been approved.`,
-      isRead: false,
-      timestamp: serverTimestamp()
-    });
-
-    const profileUrl = `https://www.elitehubng.com/${targetCollection}/${newProviderRef.id}`;
-    await sendApprovalEmail(app.email, app.fullName || app.vendorName || app.businessName || app.name, providerType, profileUrl);
-
-    if (providerType === 'Vendor' && app.referralCode) {
-      const q = query(collection(db, "vendors"), where("referralCode", "==", app.referralCode));
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        const referrerDoc = querySnapshot.docs[0];
-        const referrerRef = referrerDoc.ref;
-        const referrerData = referrerDoc.data() as Vendor;
-        const newReferrals = [...(referrerData.referrals || []), newProviderRef.id];
-        batch.update(referrerRef, { referrals: newReferrals });
-        for (const tier of referralTiers) {
-            if (newReferrals.length >= tier.count && !referrerData.claimedReferralTiers?.includes(tier.count)) {
-                let updates: any = { claimedReferralTiers: [...(referrerData.claimedReferralTiers || []), tier.count] };
-                if (tier.reward === '10 posts') updates.postLimit = increment(10);
-                else if (tier.reward === 'verified badge') { updates.isVerified = true; updates.badgeExpirationDate = add(new Date(), { months: 12 }).toISOString(); }
-                else if (tier.reward === 'vip status') updates.tier = 'vip';
-                else if (tier.reward === 'vvip status') updates.tier = 'vvip';
-                batch.update(referrerRef, updates);
-            }
-        }
-      }
+  const handleApplicationDecision = async (appId: string, appType: 'vendor' | 'lawyer' | 'logistics' | 'service' | 'currency-exchange', appEmail: string, appName: string) => {
+    try {
+        await approveApplicationAction({ appId, appType });
+        // Assume profile URL can be constructed - this might need adjustment if IDs are not predictable
+        // For now, we direct to a generic success page or the main category page.
+        const profileUrl = `https://www.elitehubng.com/${appType}s`; 
+        await sendApprovalEmail(appEmail, appName, appType, profileUrl);
+        
+        toast({ title: 'Application Approved', description: `${appName} is now a registered ${appType}.` });
+        refreshData();
+    } catch (error: any) {
+        console.error("Error approving application:", error);
+        toast({ variant: 'destructive', title: 'Approval Failed', description: error.message || 'Could not approve application.' });
     }
-
-    await batch.commit();
-    toast({ title: 'Application Approved', description: `${newProviderData.name || newProviderData.businessName || newProviderData.fullName} is now a registered ${providerType.toLowerCase()}.` });
-    refreshData();
   };
+
+  const handleUpdateDecision = async (req: ProfileUpdateRequest, decision: 'approved' | 'rejected') => {
+    const targetCollection = req.providerType + 's';
+    const requestCollection = req.providerType + 'ProfileUpdateRequests';
+    const providerRef = doc(db, targetCollection, req.providerId);
+    const requestRef = doc(db, requestCollection, req.id);
+    
+    try {
+        const batch = writeBatch(db);
+        if (decision === 'approved') {
+            batch.update(providerRef, { ...req.data, profileUpdateStatus: 'approved' });
+        } else {
+            batch.update(providerRef, { profileUpdateStatus: 'rejected' });
+        }
+        batch.delete(requestRef);
+        await batch.commit();
+
+        toast({ title: 'Update Request Handled', description: `Request has been ${decision}.` });
+        refreshData();
+    } catch (error) {
+        console.error("Error handling update request:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to handle update request.' });
+    }
+  };
+
 
   const handleRejection = async (appId: string, collectionName: string, name: string) => {
     const appRef = doc(db, collectionName, appId);
@@ -202,17 +211,34 @@ export default function AdminDashboardPage() {
 
       <section>
         <h2 className="text-2xl font-bold font-headline mb-4">Platform Analytics</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
             <Card><CardHeader><CardTitle className="flex items-center gap-2"><Users />Users</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.totalUsers}</p></CardContent></Card>
             <Card><CardHeader><CardTitle className="flex items-center gap-2"><Package />Vendors</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.totalVendors}</p><p className="text-xs text-muted-foreground">{stats.pendingVendors} pending</p></CardContent></Card>
             <Card><CardHeader><CardTitle className="flex items-center gap-2"><Scale />Lawyers</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.totalLawyers}</p><p className="text-xs text-muted-foreground">{stats.pendingLawyers} pending</p></CardContent></Card>
             <Card><CardHeader><CardTitle className="flex items-center gap-2"><Truck />Logistics</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.totalLogistics}</p><p className="text-xs text-muted-foreground">{stats.pendingLogistics} pending</p></CardContent></Card>
             <Card><CardHeader><CardTitle className="flex items-center gap-2"><ArrowRightLeft />Currency Exchange</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.totalExchange}</p><p className="text-xs text-muted-foreground">{stats.pendingExchange} pending</p></CardContent></Card>
             <Card><CardHeader><CardTitle className="flex items-center gap-2"><Wrench />Service Providers</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.totalServices}</p><p className="text-xs text-muted-foreground">{stats.pendingServices} pending</p></CardContent></Card>
+            <Card><CardHeader><CardTitle className="flex items-center gap-2"><Edit />Profile Updates</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.pendingUpdates}</p><p className="text-xs text-muted-foreground">pending review</p></CardContent></Card>
         </div>
       </section>
 
       <div className="space-y-6 md:space-y-8">
+            <Card className="shadow-lg">
+                <CardHeader><CardTitle>Pending Profile Update Requests</CardTitle><CardDescription>{updateRequests.length > 0 ? `There are ${updateRequests.length} update requests awaiting review.` : 'No pending update requests.'}</CardDescription></CardHeader>
+                <CardContent><div className="border rounded-md"><Table><TableHeader><TableRow><TableHead>Provider</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>
+                {updateRequests.length > 0 ? updateRequests.map((req) => (
+                    <TableRow key={req.id}>
+                        <TableCell className="font-medium">{(req.data as any).name || (req.data as any).fullName}</TableCell>
+                        <TableCell>{req.providerType}</TableCell>
+                        <TableCell className="text-right space-x-2">
+                            <Button variant="outline" size="sm" onClick={() => handleUpdateDecision(req, 'approved')} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"><CheckCircle className="mr-2 h-4 w-4" />Approve</Button>
+                            <Button variant="destructive" size="sm" onClick={() => handleUpdateDecision(req, 'rejected')}><XCircle className="mr-2 h-4 w-4" />Reject</Button>
+                        </TableCell>
+                    </TableRow>
+                )) : <TableRow><TableCell colSpan={3} className="text-center h-24">All caught up!</TableCell></TableRow>}
+                </TableBody></Table></div></CardContent>
+            </Card>
+
             <Card className="shadow-lg">
                 <CardHeader><CardTitle>Pending Vendor Applications</CardTitle><CardDescription>{applications.length > 0 ? `There are ${applications.length} applications awaiting review.` : 'No pending applications.'}</CardDescription></CardHeader>
                 <CardContent><div className="border rounded-md"><Table><TableHeader><TableRow><TableHead>Vendor Name</TableHead><TableHead className="hidden sm:table-cell">Email</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>
@@ -220,7 +246,7 @@ export default function AdminDashboardPage() {
                     <TableRow key={app.id}>
                         <TableCell className="font-medium">{app.vendorName}</TableCell><TableCell className="hidden sm:table-cell">{app.email}</TableCell>
                         <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleApplicationDecision(app, 'vendorApplications', 'vendors', {uid: app.uid, name: app.vendorName, fullname: app.fullName, email: app.email, phoneNumber: app.phoneNumber, whatsappNumber: app.whatsappNumber, address: app.address, city: app.city, rcNumber: app.rcNumber, location: app.location, categories: app.categories, trustLevel: 75, referrals: [], claimedReferralTiers: [], referralCode: `${app.username.toUpperCase()}${new Date().getFullYear()}`, memberSince: new Date().toISOString().split('T')[0], profileImage: 'https://res.cloudinary.com/dzh1040s2/image/upload/v1721832966/user_fck81m.png', bannerImage: 'https://placehold.co/1200x400', dataAiHint: 'store logo', businessDescription: app.businessDescription, rating: 0, ratingCount: 0, totalRating: 0, isVerified: false, status: 'active', badgeExpirationDate: null, postLimit: 0, postCount: 0, adBoosts: 0, idCardFront: app.idCardFront || null, idCardBack: app.idCardBack || null, passportPhoto: app.passportPhoto || null, nin: app.nin || null, kycStatus: 'pending'}, 'Vendor')} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"><CheckCircle className="mr-2 h-4 w-4" />Approve</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleApplicationDecision(app.id, 'vendor', app.email, app.vendorName)} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"><CheckCircle className="mr-2 h-4 w-4" />Approve</Button>
                         <Button variant="destructive" size="sm" onClick={() => handleRejection(app.id, 'vendorApplications', app.vendorName)}><XCircle className="mr-2 h-4 w-4" />Reject</Button>
                         </TableCell>
                     </TableRow>
@@ -235,7 +261,7 @@ export default function AdminDashboardPage() {
                     <TableRow key={app.id}>
                         <TableCell className="font-medium">{app.fullName}</TableCell><TableCell className="hidden sm:table-cell">{app.scn}</TableCell><TableCell className="hidden md:table-cell">{app.location}</TableCell>
                         <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleApplicationDecision(app, 'lawyerApplications', 'lawyers', {uid: app.uid, fullName: app.fullName, email: app.email, phoneNumber: app.phoneNumber, whatsappNumber: app.whatsappNumber, scn: app.scn, tagline: app.tagline, bio: app.bio, city: app.city, location: app.location, yearsOfExperience: app.yearsOfExperience, practiceAreas: app.practiceAreas, profileImage: app.profileImage || 'https://res.cloudinary.com/dzh1040s2/image/upload/v1721832966/user_fck81m.png', status: 'active', rating: 0, ratingCount: 0, totalRating: 0, isVerified: false, badgeExpirationDate: null, tier: null, profileVisibleUntil: null, idCardFront: app.idCardFront || null, idCardBack: app.idCardBack || null, passportPhoto: app.passportPhoto || null, nin: app.nin || null, kycStatus: 'pending'}, 'Lawyer')} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"><CheckCircle className="mr-2 h-4 w-4" />Approve</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleApplicationDecision(app.id, 'lawyer', app.email, app.fullName)} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"><CheckCircle className="mr-2 h-4 w-4" />Approve</Button>
                         <Button variant="destructive" size="sm" onClick={() => handleRejection(app.id, 'lawyerApplications', app.fullName)}><XCircle className="mr-2 h-4 w-4" />Reject</Button>
                         </TableCell>
                     </TableRow>
@@ -250,7 +276,7 @@ export default function AdminDashboardPage() {
                     <TableRow key={app.id}>
                         <TableCell className="font-medium">{app.businessName}</TableCell><TableCell className="hidden md:table-cell">{app.location}</TableCell>
                         <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleApplicationDecision(app, 'currencyExchangeApplications', 'currencyExchangeAgents', {uid: app.uid, fullName: app.fullName, email: app.email, phoneNumber: app.phoneNumber, whatsappNumber: app.whatsappNumber, businessName: app.businessName, bio: app.bio, city: app.city, location: app.location, profileImage: app.profileImage || 'https://res.cloudinary.com/dzh1040s2/image/upload/v1721832966/user_fck81m.png', currenciesAccepted: app.currenciesAccepted, transactionTypes: app.transactionTypes, operatesOnline: app.operatesOnline, hasPhysicalLocation: app.hasPhysicalLocation, address: app.address || '', status: 'active', rating: 0, ratingCount: 0, totalRating: 0, isVerified: false, badgeExpirationDate: null, tier: null, profileVisibleUntil: null, galleryActiveUntil: null, kycStatus: 'pending', idCardFront: app.idCardFront || null, idCardBack: app.idCardBack || null, passportPhoto: app.passportPhoto || null, nin: app.nin || null}, 'Currency Exchange Agent')} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"><CheckCircle className="mr-2 h-4 w-4" />Approve</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleApplicationDecision(app.id, 'currency-exchange', app.email, app.businessName)} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"><CheckCircle className="mr-2 h-4 w-4" />Approve</Button>
                         <Button variant="destructive" size="sm" onClick={() => handleRejection(app.id, 'currencyExchangeApplications', app.businessName)}><XCircle className="mr-2 h-4 w-4" />Reject</Button>
                         </TableCell>
                     </TableRow>
@@ -265,7 +291,7 @@ export default function AdminDashboardPage() {
                     <TableRow key={app.id}>
                         <TableCell className="font-medium">{app.name}</TableCell><TableCell className="hidden sm:table-cell">{app.category || 'N/A'}</TableCell><TableCell className="hidden md:table-cell">{app.location}</TableCell>
                         <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleApplicationDecision(app, 'logisticsApplications', 'logisticsCompanies', {uid: app.uid, name: app.name, email: app.email, phoneNumber: app.phoneNumber, whatsappNumber: app.whatsappNumber, rcNumber: app.rcNumber, bio: app.bio, city: app.city, location: app.location, address: app.address, category: app.category, profileImage: app.profileImage || 'https://res.cloudinary.com/dzh1040s2/image/upload/v1721832966/user_fck81m.png', status: 'active', rating: 0, ratingCount: 0, totalRating: 0, isVerified: false, badgeExpirationDate: null, tier: null, profileVisibleUntil: null, galleryActiveUntil: null, boostedUntil: null, idCardFront: app.idCardFront || null, idCardBack: app.idCardBack || null, passportPhoto: app.passportPhoto || null, nin: app.nin || null, kycStatus: 'pending'}, 'Logistics Partner')} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"><CheckCircle className="mr-2 h-4 w-4" />Approve</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleApplicationDecision(app.id, 'logistics', app.email, app.name)} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"><CheckCircle className="mr-2 h-4 w-4" />Approve</Button>
                         <Button variant="destructive" size="sm" onClick={() => handleRejection(app.id, 'logisticsApplications', app.name)}><XCircle className="mr-2 h-4 w-4" />Reject</Button>
                         </TableCell>
                     </TableRow>
@@ -280,7 +306,7 @@ export default function AdminDashboardPage() {
                     <TableRow key={app.id}>
                         <TableCell className="font-medium">{app.businessName}</TableCell><TableCell className="hidden sm:table-cell">{app.serviceType}</TableCell><TableCell className="hidden md:table-cell">{app.location}</TableCell>
                         <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleApplicationDecision(app, 'serviceProviderApplications', 'serviceProviders', {uid: app.uid, fullName: app.fullName, email: app.email, phoneNumber: app.phoneNumber, whatsappNumber: app.whatsappNumber, businessName: app.businessName, bio: app.bio, city: app.city, location: app.location, profileImage: app.profileImage || 'https://res.cloudinary.com/dzh1040s2/image/upload/v1721832966/user_fck81m.png', serviceCategory: app.serviceCategory, serviceType: app.serviceType, operatesOnline: app.operatesOnline, hasPhysicalLocation: app.hasPhysicalLocation, address: app.address || '', status: 'active', rating: 0, ratingCount: 0, totalRating: 0, isVerified: false, badgeExpirationDate: null, tier: null, profileVisibleUntil: null, galleryActiveUntil: null, boostedUntil: null, idCardFront: app.idCardFront || null, idCardBack: app.idCardBack || null, passportPhoto: app.passportPhoto || null, nin: app.nin || null, kycStatus: 'pending'}, 'Service Provider')} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"><CheckCircle className="mr-2 h-4 w-4" />Approve</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleApplicationDecision(app.id, 'service', app.email, app.businessName)} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"><CheckCircle className="mr-2 h-4 w-4" />Approve</Button>
                         <Button variant="destructive" size="sm" onClick={() => handleRejection(app.id, 'serviceProviderApplications', app.businessName)}><XCircle className="mr-2 h-4 w-4" />Reject</Button>
                         </TableCell>
                     </TableRow>

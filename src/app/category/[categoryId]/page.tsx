@@ -45,35 +45,34 @@ export default function CategoryPage() {
   const filteredProducts = useMemo(() => {
     if (!category) return [];
     
-    // First, filter by category
-    let categoryProducts = allProducts.filter(p => p.category.toLowerCase() === category.name.toLowerCase() && p.status === 'active');
+    // First, filter by category and search term
+    let categoryProducts = allProducts.filter(p => 
+        p.category.toLowerCase() === category.name.toLowerCase() && 
+        p.status === 'active' &&
+        (!searchTerm || p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
     
-    // Then filter by search term if there is one
-    if (searchTerm) {
-        categoryProducts = categoryProducts.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
     const getVendor = (vendorId: string) => allVendors.find(v => v.id === vendorId);
 
-    // Then, sort the filtered products
+    // Then, sort the filtered products based on the new hierarchy
     categoryProducts.sort((a, b) => {
         const vendorA = getVendor(a.vendorId);
         const vendorB = getVendor(b.vendorId);
 
         const tierOrder = { 'vvip': 4, 'vip': 3 };
+        
         const tierA = vendorA?.tier ? tierOrder[vendorA.tier as keyof typeof tierOrder] || 0 : 0;
         const tierB = vendorB?.tier ? tierOrder[vendorB.tier as keyof typeof tierOrder] || 0 : 0;
-
-        if (tierB !== tierA) return tierB - tierA; // Sort by tier first
+        if (tierB !== tierA) return tierB - tierA;
 
         const boostedA = a.boostedUntil && new Date(a.boostedUntil) > new Date() ? 2 : 0;
         const boostedB = b.boostedUntil && new Date(b.boostedUntil) > new Date() ? 2 : 0;
+        if (boostedB !== boostedA) return boostedB - boostedA;
 
-        if (boostedB !== boostedA) return boostedB - boostedA; // Then by boost status
-
-        const verifiedA = vendorA?.isVerified ? 1 : 0;
-        const verifiedB = vendorB?.isVerified ? 1 : 0;
-
-        if (verifiedB !== verifiedA) return verifiedB - verifiedA; // Then by verified status
+        const isBadgeActive = (v?: Vendor) => v?.isVerified && v?.badgeExpirationDate && new Date(v.badgeExpirationDate) > new Date();
+        const verifiedA = isBadgeActive(vendorA) ? 1 : 0;
+        const verifiedB = isBadgeActive(vendorB) ? 1 : 0;
+        if (verifiedB !== verifiedA) return verifiedB - verifiedA;
 
         return 0; // Keep original order if all else is equal
     });

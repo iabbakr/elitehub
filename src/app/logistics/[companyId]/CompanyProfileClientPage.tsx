@@ -163,14 +163,16 @@ export function CompanyProfileClientPage({ initialCompany }: { initialCompany: L
     const files = Array.from(e.target.files);
 
     if (files.length === 0) return;
+    
+    const maxUploads = company.tier === 'vvip' ? 6 : (company.tier === 'vip' ? 3 : 0);
 
-    if ((company.galleryImages?.length || 0) >= 6) {
-        toast({ variant: 'destructive', title: 'Gallery Full', description: 'You have reached the maximum of 6 images. Please delete an image to upload a new one.'});
+    if ((company.galleryImages?.length || 0) >= maxUploads) {
+        toast({ variant: 'destructive', title: 'Gallery Full', description: `You have reached the maximum of ${maxUploads} images. Please delete an image to upload a new one.`});
         return;
     }
 
-    if ((company.galleryImages?.length || 0) + files.length > 6) {
-        toast({ variant: 'destructive', title: 'Upload Limit Exceeded', description: `You can only add ${6 - (company.galleryImages?.length || 0)} more image(s).`});
+    if ((company.galleryImages?.length || 0) + files.length > maxUploads) {
+        toast({ variant: 'destructive', title: 'Upload Limit Exceeded', description: `You can only add ${maxUploads - (company.galleryImages?.length || 0)} more image(s).`});
         return;
     }
 
@@ -248,6 +250,7 @@ export function CompanyProfileClientPage({ initialCompany }: { initialCompany: L
   const contactButtonText = company.whatsappNumber ? 'WhatsApp' : 'Call Now';
   const ContactIcon = company.whatsappNumber ? MessageCircle : Phone;
   const isProfileActive = company.profileVisibleUntil && new Date(company.profileVisibleUntil) > new Date();
+  const canViewGallery = company.tier === 'vip' || company.tier === 'vvip';
 
 
   return (
@@ -348,11 +351,11 @@ export function CompanyProfileClientPage({ initialCompany }: { initialCompany: L
                 </div>
             </div>
 
-            { (company.galleryImages && company.galleryImages.length > 0) || isOwner ? (
+            { (canViewGallery || isOwner) ? (
                 <div className="mt-8 pt-6 border-t">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-xl font-semibold">Our Work in Pictures</h3>
-                        {isOwner && (
+                        {isOwner && canViewGallery && (
                              <>
                                 <input 
                                     type="file" 
@@ -369,7 +372,7 @@ export function CompanyProfileClientPage({ initialCompany }: { initialCompany: L
                             </>
                         )}
                     </div>
-                     {company.galleryImages && company.galleryImages.length > 0 ? (
+                     {company.galleryImages && company.galleryImages.length > 0 && canViewGallery ? (
                         <Carousel className="w-full">
                             <CarouselContent>
                             {company.galleryImages.map((imgSrc, index) => (
@@ -417,8 +420,8 @@ export function CompanyProfileClientPage({ initialCompany }: { initialCompany: L
                         </Carousel>
                     ) : (
                         <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                            <p>No gallery images uploaded yet.</p>
-                            <p className="text-xs">Upload some images to showcase your work!</p>
+                            <p>{canViewGallery ? "No gallery images uploaded yet." : "Upgrade to a VIP or VVIP plan to showcase your work."}</p>
+                            {isOwner && canViewGallery && <p className="text-xs">Upload some images to showcase your work!</p>}
                         </div>
                     )}
                 </div>

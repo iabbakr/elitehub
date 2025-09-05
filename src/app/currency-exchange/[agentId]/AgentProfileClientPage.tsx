@@ -14,24 +14,6 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { doc, runTransaction, updateDoc } from 'firebase/firestore';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 import Link from 'next/link';
 
 
@@ -44,7 +26,6 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
   const [hoverRating, setHoverRating] = useState(0);
   const [hasRated, setHasRated] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
 
   const isOwner = user && agent && user.uid === agent.uid;
@@ -161,63 +142,6 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
             setIsUploading(false);
         }
     }
-
-
-  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !agent) return;
-    const files = Array.from(e.target.files);
-
-    if (files.length === 0) return;
-
-    if ((agent.galleryImages?.length || 0) >= 6) {
-        toast({ variant: 'destructive', title: 'Gallery Full', description: 'You have reached the maximum of 6 images. Please delete an image to upload a new one.'});
-        return;
-    }
-
-    if ((agent.galleryImages?.length || 0) + files.length > 6) {
-        toast({ variant: 'destructive', title: 'Upload Limit Exceeded', description: `You can only add ${6 - (agent.galleryImages?.length || 0)} more image(s).`});
-        return;
-    }
-
-    setIsUploading(true);
-    toast({ title: 'Uploading Images...', description: 'Please wait while we add your images.'});
-    
-    try {
-        const uploadPromises = files.map(file => uploadToCloudinary(file));
-        const newImageUrls = await Promise.all(uploadPromises);
-        
-        const agentRef = doc(db, 'currencyExchangeAgents', agent.id);
-        await updateDoc(agentRef, {
-            galleryImages: [...(agent.galleryImages || []), ...newImageUrls]
-        });
-
-        setAgent(prev => prev ? ({ ...prev, galleryImages: [...(prev.galleryImages || []), ...newImageUrls]}) : prev);
-        toast({ title: 'Upload Successful!', description: 'Your gallery has been updated.' });
-
-    } catch (error) {
-        console.error("Gallery upload failed: ", error);
-        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload images. Please try again.' });
-    } finally {
-        setIsUploading(false);
-    }
-  };
-
-    const handleDeleteImage = async (imageUrl: string) => {
-        if (!agent) return;
-
-        const updatedImages = agent.galleryImages?.filter(img => img !== imageUrl);
-
-        try {
-            const agentRef = doc(db, 'currencyExchangeAgents', agent.id);
-            await updateDoc(agentRef, { galleryImages: updatedImages });
-
-            setAgent(prev => prev ? { ...prev, galleryImages: updatedImages } : prev);
-            toast({ title: 'Image Deleted', description: 'The image has been removed from your gallery.' });
-        } catch (error) {
-            console.error("Error deleting image: ", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete the image.' });
-        }
-    };
 
 
   if (loading) {
@@ -398,82 +322,6 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
                     </div>
                 </div>
             </div>
-
-            { (agent.galleryImages && agent.galleryImages.length > 0) || isOwner ? (
-                <div className="mt-8 pt-6 border-t">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-semibold">Our Work in Pictures</h3>
-                        {isOwner && (
-                             <>
-                                <input 
-                                    type="file" 
-                                    ref={galleryInputRef}
-                                    className="hidden" 
-                                    multiple 
-                                    accept="image/*"
-                                    onChange={handleGalleryUpload}
-                                />
-                                <Button onClick={() => galleryInputRef.current?.click()} disabled={isUploading}>
-                                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                                    Upload Images
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                     {agent.galleryImages && agent.galleryImages.length > 0 ? (
-                        <Carousel className="w-full">
-                            <CarouselContent>
-                            {agent.galleryImages.map((imgSrc, index) => (
-                                <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
-                                <div className="p-1">
-                                    <Card className="group">
-                                        <CardContent className="relative flex aspect-square items-center justify-center p-0">
-                                            <Image
-                                                src={imgSrc}
-                                                alt={`Gallery image ${index + 1}`}
-                                                width={400}
-                                                height={400}
-                                                className="rounded-lg object-cover w-full h-full"
-                                            />
-                                            {isOwner && (
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <Trash2 className="h-4 w-4" />
-                                                            <span className="sr-only">Delete Image</span>
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                This action cannot be undone. This will permanently delete the image from your gallery.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDeleteImage(imgSrc)}>Delete</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                                </CarouselItem>
-                            ))}
-                            </CarouselContent>
-                            <CarouselPrevious />
-                            <CarouselNext />
-                        </Carousel>
-                    ) : (
-                        <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                            <p>No gallery images uploaded yet.</p>
-                            <p className="text-xs">Upload some images to showcase your work!</p>
-                        </div>
-                    )}
-                </div>
-            ) : null }
         </CardContent>
       </Card>
     </div>

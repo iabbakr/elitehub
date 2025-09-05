@@ -4,9 +4,6 @@
 import Link from 'next/link';
 import { ShieldCheck, Twitter, Mail, Instagram, Youtube } from 'lucide-react';
 import { Logo } from '../Logo';
-import { useAuth } from '@/hooks/use-auth';
-import { useEffect, useState } from 'react';
-import { checkIfUserIsAlreadyProvider } from '@/lib/data';
 
 const TikTokIcon = () => (
   <svg
@@ -30,25 +27,6 @@ const TikTokIcon = () => (
 
 export function Footer() {
   const year = new Date().getFullYear();
-  const { user } = useAuth();
-  const [isProvider, setIsProvider] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (isMounted && user) {
-        const checkProviderStatus = async () => {
-          const userIsProvider = await checkIfUserIsAlreadyProvider(user.uid);
-          setIsProvider(userIsProvider);
-        };
-        checkProviderStatus();
-    } else if (!user) {
-        setIsProvider(false);
-    }
-  }, [user, isMounted]);
 
   const footerLinks = {
     'Need Help?': [

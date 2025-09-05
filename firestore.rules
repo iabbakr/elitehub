@@ -3,159 +3,215 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check for Admin role
+    // HELPER FUNCTIONS
     function isAdmin() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'devabu01@gmail.com';
+      // IMPORTANT: This uses your actual Firebase Admin User ID.
+      return request.auth != null && request.auth.uid == 'Oe4ERnL4OxPIPBNNk2WvyW6sFj43';
     }
 
-    // Helper function to check if a user is authenticated
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Helper function to check if the user is the owner of the document
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      // Check if the requesting user's UID matches the provided userId.
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Helper function to check if user owns a provider document
     function isProviderOwner(collectionName, providerId) {
-      return isSignedIn() && 
+      // Check if the user is the owner of a specific provider document.
+      // The provider document must exist and its 'uid' field must match the user's UID.
+      return isSignedIn() &&
              exists(/databases/$(database)/documents/$(collectionName)/$(providerId)) &&
              get(/databases/$(database)/documents/$(collectionName)/$(providerId)).data.uid == request.auth.uid;
     }
 
-    // Users can only read and write their own data
-    match /users/{userId} {
-      allow read, update, delete: if isOwner(userId) || isAdmin();
-      allow create: if isSignedIn();
+    // Helper function to check if the update is only adding the current user to referral arrays
+    function isValidReferralUpdate() {
+      // Allow updates that only modify pendingReferrals or successfulReferrals arrays
+      // and only add the current user's UID to these arrays
+      let allowedFields = ['pendingReferrals', 'successfulReferrals'];
+      let updatedFields = request.resource.data.diff(resource.data).affectedKeys();
+      
+      return updatedFields.hasOnly(allowedFields) &&
+             (
+               // Check if pendingReferrals is being updated
+               (!('pendingReferrals' in request.resource.data.diff(resource.data).addedKeys()) ||
+                request.resource.data.pendingReferrals.hasAll(resource.data.pendingReferrals) &&
+                request.resource.data.pendingReferrals.hasOnly(resource.data.pendingReferrals.concat([request.auth.uid]))) ||
+               // Check if successfulReferrals is being updated  
+               (!('successfulReferrals' in request.resource.data.diff(resource.data).addedKeys()) ||
+                request.resource.data.successfulReferrals.hasAll(resource.data.successfulReferrals) &&
+                request.resource.data.successfulReferrals.hasOnly(resource.data.successfulReferrals.concat([request.auth.uid])))
+             );
     }
 
-    // Products can be read by anyone, but only created/updated/deleted by the vendor owner or admin
+    // ADMIN OVERRIDE - Grants full read/write access to the admin across the entire database.
+    // This rule is evaluated first. If true, access is granted. Otherwise, Firestore checks the more specific rules below.
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+    
+    // --- NON-ADMIN RULES ---
+
+    // --- USERS ---
+    match /users/{userId} {
+      // A user can read their own document
+      allow read: if isOwner(userId);
+      
+      // A user can update their own document
+      allow update: if isOwner(userId);
+      
+      // Allow updates for referral system (when someone registers with your referral code)
+      // This allows adding the current user's UID to someone else's referral arrays
+      allow update: if isSignedIn() && isValidReferralUpdate();
+      
+      // Allow server-side updates for referral bonuses and subscription handling
+      // This is for your cloud functions or server actions
+      allow update: if true;
+      
+      // A new user can create their own document during signup
+      allow create: if isOwner(userId);
+      
+      // No one else can delete user docs, and no one can list all users
+      allow list, delete: if false;
+    }
+    
+    // --- REFERRALS ---
+    match /referrals/{referralId} {
+        // Anyone can get a referral doc to verify a code.
+        allow get: if true;
+        // A user can create their own referral code document.
+        allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+        // The system (via an admin-powered function) can update referral counts.
+        allow update: if true; // Allow server-side updates
+        // Non-admins cannot list all referral documents. They query for their own.
+        allow list, delete: if false;
+    }
+
+    // --- PRODUCTS ---
     match /products/{productId} {
-      allow read: if true;
-      allow create: if isSignedIn() && 
-                       exists(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)) &&
-                       get(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)).data.uid == request.auth.uid;
-      allow update, delete: if isSignedIn() && 
-                               (get(/databases/$(database)/documents/products/$(productId)).data.vendorId == request.auth.uid || isAdmin());
+      // Anyone can read product details.
+      allow read, list: if true;
+      // Only the verified owner of a vendor profile can create a product.
+      allow create: if isProviderOwner('vendors', request.resource.data.vendorId);
+      // Only the vendor who created the product can update/delete it.
+      allow update, delete: if isProviderOwner('vendors', resource.data.vendorId);
 
-      // Reviews and replies
+      // --- REVIEWS (Sub-collection of products) ---
       match /reviews/{reviewId} {
-        allow read: if true;
+        allow read, list: if true;
+        // Any signed-in user can create a review.
         allow create: if isSignedIn();
-        allow update, delete: if isSignedIn() && 
-                                 (get(/databases/$(database)/documents/products/$(productId)/reviews/$(reviewId)).data.userId == request.auth.uid || isAdmin());
+        // Only the user who wrote the review can update/delete it.
+        allow update, delete: if isOwner(resource.data.authorId);
 
+        // --- REPLIES (Sub-collection of reviews) ---
         match /replies/{replyId} {
-          allow read: if true;
+          allow read, list: if true;
           allow create: if isSignedIn();
-          allow update, delete: if isSignedIn() && 
-                                   (get(/databases/$(database)/documents/products/$(productId)/reviews/$(reviewId)/replies/$(replyId)).data.userId == request.auth.uid || isAdmin());
+          allow update, delete: if isOwner(resource.data.authorId);
         }
       }
     }
 
-    // Vendors
-    match /vendors/{vendorId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isProviderOwner('vendors', vendorId) || isAdmin();
-      allow delete: if isAdmin();
+    // --- PROVIDER COLLECTIONS (Vendors, Lawyers, etc.) ---
+    match /vendors/{providerId} {
+      allow get, list: if true;
+      allow update: if isProviderOwner('vendors', providerId);
+      allow create, delete: if false;
     }
-
-    // Lawyers
-    match /lawyers/{lawyerId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isProviderOwner('lawyers', lawyerId) || isAdmin();
-      allow delete: if isAdmin();
+    match /lawyers/{providerId} {
+      allow get, list: if true;
+      allow update: if isProviderOwner('lawyers', providerId);
+      allow create, delete: if false;
     }
-
-    // Logistics Companies
-    match /logisticsCompanies/{companyId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isProviderOwner('logisticsCompanies', companyId) || isAdmin();
-      allow delete: if isAdmin();
+    match /logisticsCompanies/{providerId} {
+      allow get, list: if true;
+      allow update: if isProviderOwner('logisticsCompanies', providerId);
+       allow create, delete: if false;
     }
-
-    // Currency Exchange Agents
-    match /currencyExchangeAgents/{agentId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isProviderOwner('currencyExchangeAgents', agentId) || isAdmin();
-      allow delete: if isAdmin();
+    match /currencyExchangeAgents/{providerId} {
+      allow get, list: if true;
+      allow update: if isProviderOwner('currencyExchangeAgents', providerId);
+       allow create, delete: if false;
     }
-    
-    // Service Providers
     match /serviceProviders/{providerId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isProviderOwner('serviceProviders', providerId) || isAdmin();
-      allow delete: if isAdmin();
+      allow get, list: if true;
+      allow update: if isProviderOwner('serviceProviders', providerId);
+       allow create, delete: if false;
     }
-
-    // Application collections
+    
+    // --- APPLICATION COLLECTIONS ---
     match /vendorApplications/{appId} {
-      allow read: if isAdmin();
       allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
+      allow read, list, update, delete: if false; // Only admin can manage
     }
-    
     match /lawyerApplications/{appId} {
-      allow read: if isAdmin();
       allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
+      allow read, list, update, delete: if false;
     }
-    
     match /logisticsApplications/{appId} {
-      allow read: if isAdmin();
       allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
+      allow read, list, update, delete: if false;
     }
-    
     match /currencyExchangeApplications/{appId} {
-      allow read: if isAdmin();
       allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
+      allow read, list, update, delete: if false;
     }
-    
     match /serviceProviderApplications/{appId} {
-      allow read: if isAdmin();
       allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
+      allow read, list, update, delete: if false;
     }
 
-    // Chats are private between participants
+    // --- PROFILE UPDATE REQUEST COLLECTIONS ---
+    match /vendorProfileUpdateRequests/{reqId} {
+        allow create: if isOwner(request.resource.data.uid);
+        allow read, list, update, delete: if false;
+    }
+    match /lawyerProfileUpdateRequests/{reqId} {
+        allow create: if isOwner(request.resource.data.uid);
+        allow read, list, update, delete: if false;
+    }
+    match /logisticsProfileUpdateRequests/{reqId} {
+        allow create: if isOwner(request.resource.data.uid);
+        allow read, list, update, delete: if false;
+    }
+    match /currencyExchangeProfileUpdateRequests/{reqId} {
+        allow create: if isOwner(request.resource.data.uid);
+        allow read, list, update, delete: if false;
+    }
+    match /serviceProfileUpdateRequests/{reqId} {
+        allow create: if isOwner(request.resource.data.uid);
+        allow read, list, update, delete: if false;
+    }
+
+    // --- CHATS ---
     match /chats/{chatRoomId} {
-      allow read, write: if isSignedIn() && 
-                            exists(/databases/$(database)/documents/chats/$(chatRoomId)) &&
-                            request.auth.uid in get(/databases/$(database)/documents/chats/$(chatRoomId)).data.participantIds;
-      
+      allow read, write, create: if isSignedIn() && request.auth.uid in resource.data.participantIds;
       match /messages/{messageId} {
-        allow read, write: if isSignedIn() && 
-                             exists(/databases/$(database)/documents/chats/$(chatRoomId)) &&
-                             request.auth.uid in get(/databases/$(database)/documents/chats/$(chatRoomId)).data.participantIds;
+        allow read, write, create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatRoomId)).data.participantIds;
       }
     }
-    
-    // Notifications are private to the recipient
+
+    // --- NOTIFICATIONS ---
     match /notifications/{notificationId} {
-      allow read, update, delete: if isSignedIn() && 
-                                     exists(/databases/$(database)/documents/notifications/$(notificationId)) &&
-                                     isOwner(get(/databases/$(database)/documents/notifications/$(notificationId)).data.recipientId);
-      allow create: if isSignedIn();
+      allow read, update, delete: if isOwner(resource.data.recipientId);
+      allow list: if isSignedIn() && request.query.where.recipientId == request.auth.uid;
+      allow create: if true; // Allow server-side creation
     }
     
-    // Transactions can be read by the related provider or an admin
+    // --- TRANSACTIONS ---
     match /transactions/{transactionId} {
-      allow read: if isSignedIn() && 
-                     exists(/databases/$(database)/documents/transactions/$(transactionId)) &&
-                     (isOwner(get(/databases/$(database)/documents/transactions/$(transactionId)).data.vendorId) || isAdmin());
-      allow create: if isSignedIn(); // Allow authenticated users to create transactions
-      allow update, delete: if isAdmin();
+      allow read: if isOwner(resource.data.uid);
+      allow list: if isSignedIn() && request.query.where.uid == request.auth.uid;
+      allow create, update, delete: if false;
+    }
+    
+    // --- PAYOUT REQUESTS ---
+    match /payoutRequests/{requestId} {
+      allow create: if isOwner(request.resource.data.userId);
+      allow read, list, update, delete: if false;
     }
   }
 }

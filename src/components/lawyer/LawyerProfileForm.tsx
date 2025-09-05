@@ -26,11 +26,12 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
-import { nigerianStates, practiceAreas, type Lawyer } from '@/lib/data';
-import { useState } from 'react';
+import { Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { nigerianStates, practiceAreas, type Lawyer, createProfileUpdateRequest } from '@/lib/data';
+import { useState, useMemo } from 'react';
 import { Checkbox } from '../ui/checkbox';
 import { ScrollArea } from '../ui/scroll-area';
+import { differenceInDays } from 'date-fns';
 
 const profileFormSchema = z.object({
   fullName: z.string().min(2, "Full name is required."),
@@ -69,25 +70,35 @@ export function LawyerProfileForm({ lawyer, onSuccess, onCancel }: LawyerProfile
     },
   });
 
+  const canRequestUpdate = useMemo(() => {
+    if (lawyer.profileUpdateStatus === 'pending') return false;
+    if (!lawyer.lastProfileUpdateRequest) return true;
+    const lastRequestDate = new Date(lawyer.lastProfileUpdateRequest.seconds * 1000);
+    return differenceInDays(new Date(), lastRequestDate) >= 30;
+  }, [lawyer.profileUpdateStatus, lawyer.lastProfileUpdateRequest]);
+
+  const daysUntilNextUpdate = useMemo(() => {
+    if (!lawyer.lastProfileUpdateRequest) return 0;
+    const lastRequestDate = new Date(lawyer.lastProfileUpdateRequest.seconds * 1000);
+    const daysSince = differenceInDays(new Date(), lastRequestDate);
+    return 30 - daysSince;
+  }, [lawyer.lastProfileUpdateRequest]);
+
   async function onSubmit(values: z.infer<typeof profileFormSchema>) {
+     if (!canRequestUpdate) {
+        toast({ variant: 'destructive', title: "Update Limit Reached", description: "You can only request a profile update once every 30 days." });
+        return;
+    }
     setIsSubmitting(true);
-    toast({ title: 'Updating Profile...', description: 'Please wait.' });
+    toast({ title: 'Submitting Update Request...', description: 'Please wait.' });
 
     try {
-      const lawyerDocRef = doc(db, 'lawyers', lawyer.id);
-      const updateData: Partial<Lawyer> = { ...values };
-
-      if (values.whatsappNumber && values.whatsappNumber !== lawyer.whatsappNumber) {
-        updateData.whatsappNumberLastUpdated = serverTimestamp();
-      }
-
-      await updateDoc(lawyerDocRef, updateData);
-      
-      toast({ title: 'Profile Updated!', description: 'Your information has been saved.' });
+      await createProfileUpdateRequest('lawyer', lawyer.id, lawyer.uid!, values);
+      toast({ title: 'Update Request Submitted!', description: 'Your profile changes are now pending admin approval.' });
       onSuccess();
     } catch (error: any) {
-      console.error("Error updating profile:", error);
-      toast({ variant: 'destructive', title: "Error", description: "Failed to update profile. Please try again." });
+      console.error("Error submitting update request:", error);
+      toast({ variant: 'destructive', title: "Error", description: "Failed to submit update request. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -98,13 +109,31 @@ export function LawyerProfileForm({ lawyer, onSuccess, onCancel }: LawyerProfile
       <DialogHeader>
         <DialogTitle>Edit Your Professional Profile</DialogTitle>
         <DialogDescription>
-          Update your public information. Click save when you're done.
+          Submit your desired profile changes for admin review. You can request an update once every 30 days.
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-grow min-h-0">
           <ScrollArea className="flex-grow px-6 py-4">
             <div className="space-y-4">
+                {lawyer.profileUpdateStatus === 'pending' && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-md flex items-center gap-2 text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin"/>
+                    <span>Your previous update request is currently under review.</span>
+                  </div>
+                )}
+                {lawyer.profileUpdateStatus === 'approved' && (
+                  <div className="p-3 bg-green-50 border border-green-200 text-green-800 rounded-md flex items-center gap-2 text-sm">
+                    <ShieldCheck className="h-4 w-4"/>
+                    <span>Your last profile update was approved.</span>
+                  </div>
+                )}
+                {!canRequestUpdate && lawyer.profileUpdateStatus !== 'pending' && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md flex items-center gap-2 text-sm">
+                    <AlertTriangle className="h-4 w-4"/>
+                    <span>You must wait {daysUntilNextUpdate} more day(s) to request another update.</span>
+                  </div>
+                )}
               <FormField control={form.control} name="fullName" render={({ field }) => ( <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe, Esq." {...field} /></FormControl><FormMessage /></FormItem> )} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="(123) 456-7890" {...field} /></FormControl><FormMessage /></FormItem> )} />
@@ -188,9 +217,9 @@ export function LawyerProfileForm({ lawyer, onSuccess, onCancel }: LawyerProfile
           </ScrollArea>
             <DialogFooter className="flex-shrink-0">
               <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || !canRequestUpdate}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
+                Submit for Review
               </Button>
             </DialogFooter>
           </form>
