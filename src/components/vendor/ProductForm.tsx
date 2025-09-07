@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -95,17 +94,19 @@ const productFormSchema = z.object({
         const files = data.images as FileList;
         const fileCount = files.length;
         
+        const isUsed = data.condition === 'used';
+        
         // Max limit for all
         if (fileCount > 5) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "You can upload a maximum of 5 images.", path: ["images"] });
         }
 
-        // Min limit based on category
-        if(data.category === 'Computers' || data.category === 'Mobile Phones') {
-            if (fileCount < 3) {
-                 ctx.addIssue({ code: z.ZodIssueCode.custom, message: "You must upload at least 3 images for this category.", path: ["images"] });
+        // Min limit based on condition
+        if (isUsed) {
+             if (fileCount < 3) {
+                 ctx.addIssue({ code: z.ZodIssueCode.custom, message: "You must upload at least 3 images for used items.", path: ["images"] });
             }
-        } else {
+        } else { // 'new' or 'thrift'
              if (fileCount < 1) {
                 ctx.addIssue({ code: z.ZodIssueCode.custom, message: "You must upload at least 1 image.", path: ["images"] });
             }
@@ -314,6 +315,7 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
   const selectedCategory = useWatch({ control: form.control, name: 'category' });
   const selectedImages = useWatch({ control: form.control, name: 'images' });
   const descriptionValue = useWatch({ control: form.control, name: 'description' });
+  const conditionValue = useWatch({ control: form.control, name: 'condition'});
   const fileCount = selectedImages?.length || 0;
   
   const vendorProductCategories = useMemo(() => {
@@ -323,10 +325,10 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
 
   const imageRequirementText = useMemo(() => {
     if (editingProduct) return "(Optional: leave blank to keep existing images)";
-    if (!selectedCategory) return "(Select a category first)";
-    if (selectedCategory === 'Computers' || selectedCategory === 'Mobile Phones') return "(min 3, max 5)";
+    if (!conditionValue) return "(Select a condition first)";
+    if (conditionValue === 'used') return "(min 3, max 5)";
     return "(min 1, max 5)";
-  }, [selectedCategory, editingProduct]);
+  }, [conditionValue, editingProduct]);
 
   useEffect(() => {
     if (editingProduct) {
@@ -538,8 +540,8 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
                 <FormField control={form.control} name="model" render={({ field }) => ( <FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g. Camry" {...field} /></FormControl><FormMessage /></FormItem> )} />
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="year" render={({ field }) => ( <FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" placeholder="e.g. 2022" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="mileage" render={({ field }) => ( <FormItem><FormLabel>Mileage (km)</FormLabel><FormControl><Input type="number" placeholder="e.g. 50000" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="year" render={({ field }) => ( <FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" placeholder="e.g. 2022" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="mileage" render={({ field }) => ( <FormItem><FormLabel>Mileage (km)</FormLabel><FormControl><Input type="number" placeholder="e.g. 50000" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={form.control} name="transmission" render={({ field }) => ( <FormItem><FormLabel>Transmission</FormLabel><FormControl><Select onValueChange={field.onChange} defaultValue={field.value}><SelectTrigger><SelectValue placeholder="Select transmission" /></SelectTrigger><SelectContent><SelectItem value="automatic">Automatic</SelectItem><SelectItem value="manual">Manual</SelectItem></SelectContent></Select></FormControl><FormMessage /></FormItem> )} />
@@ -690,7 +692,7 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
                 </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="sourceOrigin" render={({ field }) => ( <FormItem><FormLabel>Source/Origin</FormLabel><FormControl><Input placeholder="e.g. South Africa, Local" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={form.control} name="pricePerGram" render={({ field }) => ( <FormItem><FormLabel>Price Per Gram/Carat (₦) (Optional)</FormLabel><FormControl><Input type="number" placeholder="70000" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="pricePerGram" render={({ field }) => ( <FormItem><FormLabel>Price Per Gram/Carat (₦) (Optional)</FormLabel><FormControl><Input type="number" placeholder="70000" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -791,7 +793,7 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
                 <FormField control={form.control} name="processorType" render={({ field }) => ( <FormItem><FormLabel>Processor Type</FormLabel><FormControl><Input placeholder="e.g. Intel Core i7" {...field} /></FormControl><FormMessage /></FormItem> )} />
              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="year" render={({ field }) => ( <FormItem><FormLabel>Year (Optional)</FormLabel><FormControl><Input type="number" placeholder="e.g. 2023" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="year" render={({ field }) => ( <FormItem><FormLabel>Year (Optional)</FormLabel><FormControl><Input type="number" placeholder="e.g. 2023" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="generation" render={({ field }) => ( <FormItem><FormLabel>Generation (Optional)</FormLabel><FormControl><Input placeholder="e.g. 13th Gen" {...field} /></FormControl><FormMessage /></FormItem> )} />
              </div>
              <FormField control={form.control} name="dedicatedGraphicsMemory" render={({ field }) => ( <FormItem><FormLabel>Graphics Memory (Optional)</FormLabel><FormControl><Input placeholder="e.g. 8GB GDDR6" {...field} /></FormControl><FormMessage /></FormItem> )} />
@@ -880,7 +882,7 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
                 <FormField control={form.control} name="inches" render={({ field }) => ( <FormItem><FormLabel>Screen Size (Inches, Optional)</FormLabel><FormControl><Input placeholder="e.g. 65" {...field} /></FormControl><FormMessage /></FormItem> )} />
              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="year" render={({ field }) => ( <FormItem><FormLabel>Year (Optional)</FormLabel><FormControl><Input type="number" placeholder="e.g. 2023" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="year" render={({ field }) => ( <FormItem><FormLabel>Year (Optional)</FormLabel><FormControl><Input type="number" placeholder="e.g. 2023" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="connectivity" render={({ field }) => ( <FormItem><FormLabel>Connectivity (Optional)</FormLabel><FormControl><Input placeholder="e.g. Bluetooth, Wi-Fi" {...field} /></FormControl><FormMessage /></FormItem> )} />
              </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1269,7 +1271,7 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
               )}
             />
             <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder='Name' {...field} /></FormControl><FormMessage /></FormItem> )} />
-            <FormField control={form.control} name="price" render={({ field }) => ( <FormItem><FormLabel>Price (₦) {selectedCategory === 'Precious Metals & Minerals' && <span className="text-muted-foreground text-xs">(Optional)</span>}</FormLabel><FormControl><Input type="number" placeholder="5000" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+            <FormField control={form.control} name="price" render={({ field }) => ( <FormItem><FormLabel>Price (₦) {selectedCategory === 'Precious Metals & Minerals' && <span className="text-muted-foreground text-xs">(Optional)</span>}</FormLabel><FormControl><Input type="number" placeholder="5000" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
             
             <FormField control={form.control} name="description" render={({ field }) => ( 
                 <FormItem>

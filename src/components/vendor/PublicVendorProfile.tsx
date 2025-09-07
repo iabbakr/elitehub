@@ -48,6 +48,7 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
   const [localVendor, setLocalVendor] = useState<Vendor>(vendor);
   const [hoverRating, setHoverRating] = useState(0);
   const [hasRated, setHasRated] = useState(false);
+  const isOwner = user && vendor.uid && user.uid === vendor.uid;
 
    useEffect(() => {
     const trackViewAndNotify = async () => {
@@ -88,14 +89,18 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
         }
     };
     
-    trackViewAndNotify();
+    // Only track views if the viewer is the owner of the profile.
+    if (isOwner) {
+      trackViewAndNotify();
+    }
+
 
     const ratedVendors = JSON.parse(localStorage.getItem('rated-vendors') || '{}');
     if (user && ratedVendors[user.uid]?.includes(vendor.id)) {
         setHasRated(true);
     }
 
-  }, [vendor.id, vendor.uid, user]);
+  }, [vendor.id, vendor.uid, user, isOwner]);
 
   const handleRatingSubmit = async (newRating: number) => {
     if (!user) {

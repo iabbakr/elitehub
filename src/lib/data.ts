@@ -167,7 +167,7 @@ export type Lawyer = {
     boostedUntil?: string;
 };
 
-export type LawyerApplication = Omit<Lawyer, 'id' | 'rating' | 'ratingCount' | 'totalRating' | 'profileVisibleUntil' | 'isVerified' | 'badgeExpirationDate' | 'tier' | 'kycStatus' | 'boostedUntil'> & {
+export type LawyerApplication = Omit<Lawyer, 'id' | 'rating' | 'ratingCount' | 'totalRating' | 'profileVisibleUntil' | 'isVerified' | 'badgeExpirationDate' | 'tier' | 'kycStatus' | 'boostedUntil' | 'fullName'> & {
     id: string;
     submittedAt: any;
     idCardFront?: string;
@@ -176,6 +176,9 @@ export type LawyerApplication = Omit<Lawyer, 'id' | 'rating' | 'ratingCount' | '
     nin?: string;
     password?: string;
     referralCode?: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
 };
 
 export type CurrencyExchangeAgent = {
@@ -215,7 +218,7 @@ export type CurrencyExchangeAgent = {
     lastProfileUpdateRequest?: any;
 };
 
-export type CurrencyExchangeApplication = Omit<CurrencyExchangeAgent, 'id' | 'rating' | 'ratingCount' | 'totalRating' | 'profileVisibleUntil' | 'galleryActiveUntil' | 'isVerified' | 'badgeExpirationDate' | 'tier' | 'kycStatus'> & {
+export type CurrencyExchangeApplication = Omit<CurrencyExchangeAgent, 'id' | 'rating' | 'ratingCount' | 'totalRating' | 'profileVisibleUntil' | 'galleryActiveUntil' | 'isVerified' | 'badgeExpirationDate' | 'tier' | 'kycStatus' | 'fullName'> & {
     id: string;
     submittedAt: any;
     idCardFront?: string;
@@ -224,6 +227,9 @@ export type CurrencyExchangeApplication = Omit<CurrencyExchangeAgent, 'id' | 'ra
     nin?: string;
     password?: string;
     referralCode?: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
 };
 
 export type LogisticsCompany = {
@@ -311,7 +317,7 @@ export type ServiceProvider = {
     lastProfileUpdateRequest?: any;
 };
 
-export type ServiceProviderApplication = Omit<ServiceProvider, 'id' | 'rating' | 'ratingCount' | 'totalRating' | 'profileVisibleUntil' | 'galleryActiveUntil' | 'isVerified' | 'badgeExpirationDate' | 'tier' | 'boostedUntil' | 'kycStatus'> & {
+export type ServiceProviderApplication = Omit<ServiceProvider, 'id' | 'rating' | 'ratingCount' | 'totalRating' | 'profileVisibleUntil' | 'galleryActiveUntil' | 'isVerified' | 'badgeExpirationDate' | 'tier' | 'boostedUntil' | 'kycStatus' | 'fullName'> & {
     id: string;
     submittedAt: any;
     idCardFront?: string;
@@ -320,6 +326,9 @@ export type ServiceProviderApplication = Omit<ServiceProvider, 'id' | 'rating' |
     nin?: string;
     password?: string;
     referralCode?: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
 };
 
 
@@ -369,10 +378,11 @@ export type VendorApplication = {
   password?: string;
   status: 'pending' | 'approved' | 'rejected';
   // Add other fields from the registration form
+  firstName: string;
+  lastName: string;
   fullName: string;
   phoneNumber: string;
   whatsappNumber?: string;
-  username: string;
   location: string;
   city: string;
   rcNumber?: string;

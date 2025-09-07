@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -40,7 +41,8 @@ const GoogleIcon = () => (
 
 
 const formSchema = z.object({
-  fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
+  firstName: z.string().min(2, 'First name must be at least 2 characters.'),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters.'),
   email: z.string().email('Please enter a valid email address.'),
   password: z.string().min(8, 'Password must be at least 8 characters.'),
   confirmPassword: z.string(),
@@ -65,7 +67,8 @@ function SignupUserFormComponent() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: '',
+      firstName: '',
+      lastName: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -105,6 +108,7 @@ function SignupUserFormComponent() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
+    const fullName = `${values.firstName} ${values.lastName}`.trim();
     try {
       const emailExists = await checkIfEmailExists(values.email);
       if (emailExists) {
@@ -119,16 +123,16 @@ function SignupUserFormComponent() {
       
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
-      await updateProfile(user, { displayName: values.fullName });
+      await updateProfile(user, { displayName: fullName });
 
       await handleReferralOnSignup({ 
         newUserUid: user.uid, 
-        newUserFullName: values.fullName, 
+        newUserFullName: fullName, 
         newUserEmail: values.email,
         referralCode: values.referralCode 
       });
 
-      await sendWelcomeEmail(values.email, values.fullName);
+      await sendWelcomeEmail(values.email, fullName);
       
       toast({
         title: 'Account Created!',
@@ -163,19 +167,10 @@ function SignupUserFormComponent() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-               <FormField
-                control={form.control}
-                name="fullName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <FormField control={form.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="John" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                   <FormField control={form.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                </div>
               <FormField
                 control={form.control}
                 name="email"
@@ -287,7 +282,7 @@ function SignupUserFormComponent() {
 
 export default function SignupUserPage() {
     return (
-        <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+        <Suspense fallback={<div>Loading...</div>}>
             <SignupUserFormComponent />
         </Suspense>
     );

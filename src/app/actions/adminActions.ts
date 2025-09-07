@@ -127,8 +127,8 @@ export async function approveApplicationAction(data: { appId: string, appType: '
 }
 
 
-const generateReferralCode = (fullName: string) => {
-    const namePart = fullName.split(' ')[0].slice(0, 4).toUpperCase();
+const generateReferralCode = (name: string) => {
+    const namePart = name.split(' ')[0].slice(0, 4).toUpperCase();
     const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
     return `${namePart}${randomPart}`;
 };

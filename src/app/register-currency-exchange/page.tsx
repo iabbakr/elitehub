@@ -33,7 +33,8 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfi
 import { handleReferralOnSignup } from '@/app/actions/adminActions';
 
 const formSchema = z.object({
-  fullName: z.string().min(2, "Full name is required."),
+  firstName: z.string().min(2, "First name is required."),
+  lastName: z.string().min(2, "Last name is required."),
   email: z.string().email("A valid email is required."),
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
@@ -89,7 +90,7 @@ export default function RegisterCurrencyExchangePage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: '', email: '', password: '', confirmPassword: '', phoneNumber: '', whatsappNumber: '', businessName: '',
+      firstName: '', lastName: '', email: '', password: '', confirmPassword: '', phoneNumber: '', whatsappNumber: '', businessName: '',
       bio: '', city: '', currenciesAccepted: [], transactionTypes: [], operatesOnline: false,
       hasPhysicalLocation: false, address: '', terms: false, referralCode: '',
     },
@@ -98,13 +99,16 @@ export default function RegisterCurrencyExchangePage() {
   useEffect(() => {
     if (user) {
       form.setValue('email', user.email || '');
-      form.setValue('fullName', user.displayName || '');
+      const nameParts = user.displayName?.split(' ') || ['', ''];
+      form.setValue('firstName', nameParts[0] || '');
+      form.setValue('lastName', nameParts.slice(1).join(' ') || '');
     }
   }, [user, form]);
   
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     let userId = user?.uid;
+    const fullName = `${values.firstName} ${values.lastName}`.trim();
     try {
       if (!user) {
           if (!values.password) {
@@ -126,11 +130,11 @@ export default function RegisterCurrencyExchangePage() {
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
         userId = userCredential.user.uid;
         
-        await updateProfile(userCredential.user, { displayName: values.fullName });
+        await updateProfile(userCredential.user, { displayName: fullName });
 
         await handleReferralOnSignup({ 
             newUserUid: userId, 
-            newUserFullName: values.fullName, 
+            newUserFullName: fullName, 
             newUserEmail: values.email,
             referralCode: values.referralCode 
         });
@@ -140,6 +144,7 @@ export default function RegisterCurrencyExchangePage() {
 
       await addDoc(collection(db, "currencyExchangeApplications"), {
         ...applicationData,
+        fullName: fullName,
         uid: userId,
         status: 'pending',
         submittedAt: serverTimestamp(),
@@ -186,9 +191,10 @@ export default function RegisterCurrencyExchangePage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <FormField control={form.control} name="fullName" render={({ field }) => ( <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={!!user} /></FormControl><FormMessage /></FormItem> )} />
+                 <FormField control={form.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="John" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                 <FormField control={form.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem> )} />
               </div>
+              <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={!!user} /></FormControl><FormMessage /></FormItem> )} />
               {!user && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField control={form.control} name="password" render={({ field }) => ( <FormItem><FormLabel>Password</FormLabel><FormControl><div className="relative"><Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} /><Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(prev => !prev)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button></div></FormControl><FormMessage /></FormItem>)} />

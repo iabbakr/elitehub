@@ -1,9 +1,11 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ShieldCheck, Twitter, Mail, Instagram, Youtube } from 'lucide-react';
 import { Logo } from '../Logo';
+import { cn } from '@/lib/utils';
 
 const TikTokIcon = () => (
   <svg
@@ -27,6 +29,11 @@ const TikTokIcon = () => (
 
 export function Footer() {
   const year = new Date().getFullYear();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const footerLinks = {
     'Need Help?': [
@@ -46,7 +53,10 @@ export function Footer() {
   return (
     <footer className="bg-card border-t mt-12">
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className={cn(
+          "grid grid-cols-1 md:grid-cols-4 gap-8",
+          hasMounted && "text-center md:text-left"
+        )}>
              <div>
                 <h3 className="font-bold text-lg mb-4">Need Help?</h3>
                 <ul className="space-y-2">
@@ -73,7 +83,10 @@ export function Footer() {
             </div>
              <div>
                 <h3 className="font-bold text-lg mb-4">JOIN US ON</h3>
-                 <div className="flex items-center gap-4">
+                 <div className={cn(
+                    "flex items-center gap-4",
+                    hasMounted && "justify-center md:justify-start"
+                 )}>
                     <Link href="https://x.com/elitehubng" className="text-muted-foreground hover:text-primary transition-colors">
                         <Twitter className="h-5 w-5" />
                         <span className="sr-only">X</span>

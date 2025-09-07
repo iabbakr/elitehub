@@ -33,14 +33,14 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfi
 import { handleReferralOnSignup } from '@/app/actions/adminActions';
 
 const formSchema = z.object({
-  fullName: z.string().min(2, "Full name is required."),
+  firstName: z.string().min(2, "First name is required."),
+  lastName: z.string().min(2, "Last name is required."),
   email: z.string().email("A valid email is required."),
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
   phoneNumber: z.string().min(10, "Please enter a valid phone number."),
   whatsappNumber: z.string().optional(),
   vendorName: z.string().min(2, "Vendor name must be at least 2 characters."),
-  username: z.string().min(3, "Username must be at least 3 characters.").regex(/^[a-z0-9_]+$/, "Username can only contain lowercase letters, numbers, and underscores."),
   address: z.string().min(10, "Please enter a valid address."),
   city: z.string().min(2, "City is required."),
   location: z.string({ required_error: "Please select a location." }),
@@ -86,8 +86,8 @@ export default function RegisterPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: '', email: '', password: '', confirmPassword: '', phoneNumber: '', whatsappNumber: '',
-      vendorName: '', username: '', address: '', city: '', rcNumber: '',
+      firstName: '', lastName: '', email: '', password: '', confirmPassword: '', phoneNumber: '', whatsappNumber: '',
+      vendorName: '', address: '', city: '', rcNumber: '',
       referralCode: '', businessDescription: '', categories: [], terms: false,
     },
   });
@@ -95,7 +95,9 @@ export default function RegisterPage() {
   useEffect(() => {
     if (user) {
       form.setValue('email', user.email || '');
-      form.setValue('fullName', user.displayName || '');
+      const nameParts = user.displayName?.split(' ') || ['', ''];
+      form.setValue('firstName', nameParts[0] || '');
+      form.setValue('lastName', nameParts.slice(1).join(' ') || '');
     }
   }, [user, form]);
 
@@ -103,6 +105,7 @@ export default function RegisterPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     let userId = user?.uid;
+    const fullName = `${values.firstName} ${values.lastName}`.trim();
 
     try {
         if (!user) {
@@ -125,11 +128,11 @@ export default function RegisterPage() {
             const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
             userId = userCredential.user.uid;
             
-            await updateProfile(userCredential.user, { displayName: values.fullName });
+            await updateProfile(userCredential.user, { displayName: fullName });
 
             await handleReferralOnSignup({ 
                 newUserUid: userId, 
-                newUserFullName: values.fullName, 
+                newUserFullName: fullName, 
                 newUserEmail: values.email,
                 referralCode: values.referralCode 
             });
@@ -139,6 +142,7 @@ export default function RegisterPage() {
 
       await addDoc(collection(db, "vendorApplications"), {
         ...applicationData,
+        fullName: fullName,
         uid: userId,
         status: 'pending',
         submittedAt: serverTimestamp(),
@@ -182,8 +186,8 @@ export default function RegisterPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <FormField control={form.control} name="fullName" render={({ field }) => ( <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                 <FormField control={form.control} name="username" render={({ field }) => ( <FormItem><FormLabel>Username</FormLabel><FormControl><Input placeholder="johndoe" {...field} /></FormControl><FormDescription>Your unique name on EliteHub.</FormDescription><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="John" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem>)} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={!!user} /></FormControl><FormMessage /></FormItem>)} />
