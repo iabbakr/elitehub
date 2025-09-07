@@ -49,12 +49,11 @@ export default function ReferralsPage() {
 
   const copyToClipboard = () => {
     if (!userData?.referralCode) return;
-    const referralLink = `https://www.elitehubng.com/signup?ref=${userData.referralCode}`;
-    navigator.clipboard.writeText(referralLink);
+    navigator.clipboard.writeText(userData.referralCode);
     setIsCopied(true);
     toast({
       title: "Copied!",
-      description: "Referral link copied to clipboard.",
+      description: "Referral code copied to clipboard.",
     });
     setTimeout(() => setIsCopied(false), 2000);
   };
@@ -166,14 +165,14 @@ export default function ReferralsPage() {
 
           <Card>
             <CardHeader>
-                <CardTitle>Your Referral Link</CardTitle>
-                <CardDescription>Share this link with potential vendors, lawyers, and service providers. When they sign up and subscribe, you both earn!</CardDescription>
+                <CardTitle>Your Referral Code</CardTitle>
+                <CardDescription>Share this code with potential vendors, lawyers, and service providers. When they sign up and subscribe, you both earn!</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-muted rounded-lg">
-                <p className="text-lg font-mono text-primary break-all">https://www.elitehubng.com/signup?ref={userData.referralCode || 'N/A'}</p>
+                <p className="text-lg font-mono text-primary break-all">{userData.referralCode || 'N/A'}</p>
                 <Button onClick={copyToClipboard} className="w-full sm:w-auto" disabled={!userData.referralCode}>
                     {isCopied ? <Check className="mr-2 h-4 w-4"/> : <Copy className="mr-2 h-4 w-4"/>}
-                    {isCopied ? 'Copied!' : 'Copy Link'}
+                    {isCopied ? 'Copied!' : 'Copy Code'}
                 </Button>
             </CardContent>
           </Card>

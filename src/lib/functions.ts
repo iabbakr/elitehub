@@ -46,10 +46,11 @@ export async function handleSuccessfulSubscriptionReferral(subscribingUserUid: s
         const subscribingUserData = subscribingUserSnap.data() as UserData;
         const referredByCode = subscribingUserData.referredBy;
         
-        // Ensure bonus is only applied once and the user was actually referred
+        // Mark user as subscribed to prevent multiple bonuses, even if they had no referrer.
+        transaction.update(subscribingUserRef, { hasSubscribed: true });
+        
+        // If user already received a bonus or wasn't referred, stop here.
         if (subscribingUserData.hasSubscribed || !referredByCode) {
-            // Mark as subscribed even if no referrer, to prevent future checks
-            transaction.update(subscribingUserRef, { hasSubscribed: true });
             return;
         }
 
@@ -59,8 +60,6 @@ export async function handleSuccessfulSubscriptionReferral(subscribingUserUid: s
         
         if (referrerSnapshot.empty) {
             console.warn(`Referrer with code ${referredByCode} not found.`);
-            // Still mark the user as subscribed
-            transaction.update(subscribingUserRef, { hasSubscribed: true });
             return;
         }
         
@@ -68,34 +67,21 @@ export async function handleSuccessfulSubscriptionReferral(subscribingUserUid: s
         const referrerUid = referrerDoc.id;
         const referrerData = referrerDoc.data() as UserData;
 
-        // Find the pending referral entry to move it
-        const pendingReferralEntry = (referrerData.pendingReferrals || []).find(ref => ref.uid === subscribingUserUid);
+        // Prepare the entry to be moved from pending to successful
+        const referralEntry = { uid: subscribingUserUid, fullName: subscribingUserData.fullName };
 
-        // 1. Credit referrer and move user from pending to successful
-        if (pendingReferralEntry) {
-            transaction.update(referrerDoc.ref, { 
-                referralBalance: FieldValue.increment(1000),
-                pendingReferrals: FieldValue.arrayRemove(pendingReferralEntry),
-                successfulReferrals: FieldValue.arrayUnion(pendingReferralEntry)
-            });
-        } else {
-             // Fallback if not found in pending, just add to successful
-             const successfulReferralEntry = { uid: subscribingUserUid, fullName: subscribingUserData.fullName };
-             transaction.update(referrerDoc.ref, { 
-                referralBalance: FieldValue.increment(1000),
-                successfulReferrals: FieldValue.arrayUnion(successfulReferralEntry)
-            });
-        }
-
+        // 1. Update referrer's document
+        transaction.update(referrerDoc.ref, { 
+            referralBalance: FieldValue.increment(1000),
+            pendingReferrals: FieldValue.arrayRemove(referralEntry),
+            successfulReferrals: FieldValue.arrayUnion(referralEntry)
+        });
 
         // 2. Credit referee (the new subscriber)
         transaction.update(subscribingUserRef, { 
-            referralBalance: FieldValue.increment(1000),
-            hasSubscribed: true // Mark as subscribed to prevent future bonus triggers
+            referralBalance: FieldValue.increment(1000)
         });
 
-        const notificationsCollection = adminDb.collection('notifications');
-        
         // 3. Create notification for referrer
         const referrerNotificationRef = adminDb.collection('notifications').doc();
         transaction.set(referrerNotificationRef, {
