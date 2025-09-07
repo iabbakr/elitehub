@@ -44,13 +44,21 @@ export async function handleSuccessfulSubscriptionReferral(subscribingUserUid: s
         }
         
         const subscribingUserData = subscribingUserSnap.data() as UserData;
-        const referredByCode = subscribingUserData.referredBy;
         
-        // Mark user as subscribed to prevent multiple bonuses, even if they had no referrer.
+        // If user has already been marked as subscribed, we don't need to do anything.
+        // This is the key check to prevent duplicate referral credits.
+        if (subscribingUserData.hasSubscribed) {
+            console.log(`User ${subscribingUserUid} has already subscribed. No referral action needed.`);
+            return;
+        }
+        
+        // Mark the user as having subscribed to prevent future referral credits for this user.
         transaction.update(subscribingUserRef, { hasSubscribed: true });
         
-        // If user already received a bonus or wasn't referred, stop here.
-        if (subscribingUserData.hasSubscribed || !referredByCode) {
+        const referredByCode = subscribingUserData.referredBy;
+
+        // If the user wasn't referred, we can stop here.
+        if (!referredByCode) {
             return;
         }
 
@@ -66,7 +74,7 @@ export async function handleSuccessfulSubscriptionReferral(subscribingUserUid: s
         const referrerDoc = referrerSnapshot.docs[0];
         const referrerUid = referrerDoc.id;
         const referrerData = referrerDoc.data() as UserData;
-
+        
         // Prepare the entry to be moved from pending to successful
         const referralEntry = { uid: subscribingUserUid, fullName: subscribingUserData.fullName };
 

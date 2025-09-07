@@ -104,7 +104,6 @@ export type Vendor = {
   rcNumber?: string;
   memberSince: string;
   profileImage: string;
-  bannerImage: string;
   dataAiHint: string;
   businessDescription: string;
   rating: number;

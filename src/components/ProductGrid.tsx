@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import type { Product, Vendor } from '@/lib/data';
 import { createTransaction, createNotification } from '@/lib/data';
-import { Star, Building, MoreVertical, Edit, Trash2, EyeOff, Eye, Heart, TrendingUp, Zap, Crown, Gem, BadgeCheck, MapPin, Tag } from 'lucide-react';
+import { Star, Building, MoreVertical, Edit, Trash2, EyeOff, Eye, Heart, TrendingUp, Zap, Crown, Gem, BadgeCheck, MapPin, Tag, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -93,6 +93,33 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
     if (!v || !v.isVerified || !v.badgeExpirationDate) return false;
     return new Date(v.badgeExpirationDate) > new Date();
   };
+
+  const handleShare = async (e: React.MouseEvent, product: Product) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const productUrl = `${window.location.origin}/products/${product.id}`;
+    const shareData = {
+      title: product.name,
+      text: `Check out this product on EliteHub: ${product.name}`,
+      url: productUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(productUrl);
+        toast({ title: "Link Copied!", description: "Product link copied to clipboard." });
+      }
+    } catch (err: any) {
+       if (err.name !== 'AbortError') {
+          await navigator.clipboard.writeText(productUrl);
+          toast({ title: "Link Copied!", description: "Sharing was not available, so the link was copied instead." });
+      }
+    }
+  };
+
 
   const handleAddToFavorites = async (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
@@ -426,12 +453,18 @@ export function ProductGrid({ products: initialProducts, vendors, showAdminContr
                   </div>
                   <div className="flex justify-between items-end pt-2 mt-2">
                     <p className="text-lg sm:text-xl font-bold text-primary">₦{product.price?.toLocaleString()}</p>
-                    {!isVendorOwnerView && (
-                      <Button size="icon" variant="ghost" className="rounded-full h-8 w-8" onClick={(e) => handleAddToFavorites(e, product)}>
-                          <Heart className="h-4 w-4 text-muted-foreground"/>
-                          <span className="sr-only">Favorite</span>
-                      </Button>
-                    )}
+                     <div className="flex items-center gap-1">
+                        {!isVendorOwnerView && (
+                          <Button size="icon" variant="ghost" className="rounded-full h-8 w-8" onClick={(e) => handleAddToFavorites(e, product)}>
+                              <Heart className="h-4 w-4 text-muted-foreground"/>
+                              <span className="sr-only">Favorite</span>
+                          </Button>
+                        )}
+                        <Button size="icon" variant="ghost" className="rounded-full h-8 w-8" onClick={(e) => handleShare(e, product)}>
+                          <Share2 className="h-4 w-4 text-muted-foreground" />
+                          <span className="sr-only">Share</span>
+                        </Button>
+                     </div>
                   </div>
                 </div>
               </CardContent>

@@ -42,14 +42,27 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { VendorStats } from './VendorStats';
 
-interface VendorDashboardProps {
-  vendor: Vendor;
-  products: Product[];
-}
-
 const uploadToCloudinary = async (file: File) => {
+  let processedFile = file;
+  const fileName = file.name.toLowerCase();
+
+  if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
+      try {
+          const heic2any = (await import('heic2any')).default;
+          const convertedBlob = await heic2any({
+              blob: file,
+              toType: "image/jpeg",
+              quality: 0.8,
+          });
+          processedFile = new File([convertedBlob as Blob], `${file.name.split('.')[0]}.jpeg`, { type: 'image/jpeg' });
+      } catch (error) {
+          console.error('HEIC to JPEG conversion failed:', error);
+          throw new Error('Failed to convert HEIC image.');
+      }
+  }
+
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', processedFile);
   formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
   
   const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
@@ -63,6 +76,10 @@ const uploadToCloudinary = async (file: File) => {
   return data.secure_url;
 };
 
+interface VendorDashboardProps {
+  vendor: Vendor;
+  products: Product[];
+}
 
 export function VendorDashboard({ vendor: initialVendor, products }: VendorDashboardProps) {
     const { toast } = useToast();
@@ -70,7 +87,7 @@ export function VendorDashboard({ vendor: initialVendor, products }: VendorDashb
     const [isProfileFormOpen, setIsProfileFormOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
 
-    const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'profileImage' | 'bannerImage') => {
+    const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files) return;
         const file = e.target.files[0];
         if (!file) return;
@@ -81,8 +98,8 @@ export function VendorDashboard({ vendor: initialVendor, products }: VendorDashb
         try {
             const imageUrl = await uploadToCloudinary(file);
             const vendorRef = doc(db, 'vendors', vendor.id);
-            await updateDoc(vendorRef, { [field]: imageUrl });
-            setVendor(prev => ({ ...prev, [field]: imageUrl }));
+            await updateDoc(vendorRef, { profileImage: imageUrl });
+            setVendor(prev => ({ ...prev, profileImage: imageUrl }));
             toast({ title: 'Image Updated!' });
         } catch (error) {
             console.error("Image upload failed: ", error);
@@ -113,25 +130,7 @@ export function VendorDashboard({ vendor: initialVendor, products }: VendorDashb
         </Card>
       )}
       <Card className="overflow-hidden shadow-lg">
-        <div className="relative h-48 md:h-64 w-full group">
-          <Image
-            src={vendor.bannerImage}
-            alt={`${vendor.name} banner`}
-            layout="fill"
-            objectFit="cover"
-            data-ai-hint="store banner"
-          />
-          <div className="absolute inset-0 bg-black/40" />
-           <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <label className="cursor-pointer">
-                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleProfileImageUpload(e, 'bannerImage')} />
-                    <Button variant="outline" asChild>
-                        <span><Upload className="mr-2"/> Change Banner</span>
-                    </Button>
-                </label>
-           </div>
-        </div>
-        <div className="p-6 md:p-8 bg-card relative -mt-20 md:-mt-24">
+        <div className="p-6 md:p-8 bg-card relative">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <div className="relative group">
                 <Image
@@ -144,7 +143,7 @@ export function VendorDashboard({ vendor: initialVendor, products }: VendorDashb
                 />
                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <label className="cursor-pointer">
-                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleProfileImageUpload(e, 'profileImage')} />
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleProfileImageUpload(e)} />
                         <Button variant="outline" asChild>
                             <span><Upload className="mr-2"/> Change Photo</span>
                         </Button>

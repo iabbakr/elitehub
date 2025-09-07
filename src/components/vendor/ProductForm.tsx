@@ -228,8 +228,27 @@ const productFormSchema = z.object({
 });
 
 const uploadToCloudinary = async (file: File) => {
+    let processedFile = file;
+    const fileName = file.name.toLowerCase();
+
+    // Check if the file is HEIC/HEIF and convert it
+    if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
+        try {
+            const heic2any = (await import('heic2any')).default;
+            const convertedBlob = await heic2any({
+                blob: file,
+                toType: "image/jpeg",
+                quality: 0.8,
+            });
+            processedFile = new File([convertedBlob as Blob], `${file.name.split('.')[0]}.jpeg`, { type: 'image/jpeg' });
+        } catch (error) {
+            console.error('HEIC to JPEG conversion failed:', error);
+            throw new Error('Failed to convert HEIC image.');
+        }
+    }
+    
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', processedFile);
     formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
     
     const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
@@ -261,7 +280,7 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
     resolver: zodResolver(productFormSchema),
     defaultValues: editingProduct ? {
         ...editingProduct,
-        price: editingProduct.price || 0,
+        price: editingProduct.price || undefined,
         year: editingProduct.year || undefined,
         mileage: editingProduct.mileage || undefined,
         pricePerGram: editingProduct.pricePerGram || undefined,
@@ -1293,7 +1312,7 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
                 </FormItem> 
             )} />
 
-            <FormField control={form.control} name="images" render={({ field }) => ( <FormItem><FormLabel>Product Images <span className="text-muted-foreground text-xs">{imageRequirementText}</span></FormLabel><FormControl><Input type="file" accept="image/*" multiple {...imageRef} /></FormControl>{fileCount > 0 && (<div className="text-sm text-muted-foreground flex items-center gap-2"><Paperclip className="h-4 w-4" /><span>{fileCount} image(s) selected.</span></div>)}<FormMessage /></FormItem> )} />
+            <FormField control={form.control} name="images" render={({ field }) => ( <FormItem><FormLabel>Product Images <span className="text-muted-foreground text-xs">{imageRequirementText}</span></FormLabel><FormControl><Input type="file" accept="image/*,.heic,.heif" multiple {...imageRef} /></FormControl>{fileCount > 0 && (<div className="text-sm text-muted-foreground flex items-center gap-2"><Paperclip className="h-4 w-4" /><span>{fileCount} image(s) selected.</span></div>)}<FormMessage /></FormItem> )} />
             
             {/* Dynamic Category-Specific Fields */}
             {selectedCategory && (

@@ -93,7 +93,6 @@ export async function approveApplicationAction(data: { appId: string, appType: '
                 profileUpdateStatus: 'none',
                 memberSince: new Date().toISOString().split('T')[0],
                 profileImage: 'https://res.cloudinary.com/dzh1040s2/image/upload/v1721832966/user_fck81m.png',
-                bannerImage: 'https://placehold.co/1200x400',
                 ...(appType === 'vendor' && { postLimit: 0, postCount: 0 }),
                 notifiedViewMilestones: [],
             };

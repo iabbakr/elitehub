@@ -22,7 +22,8 @@ import {
   Phone,
   Home,
   FileCheck2,
-  MessageSquare
+  MessageSquare,
+  Share2,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
@@ -89,8 +90,7 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
         }
     };
     
-    // Only track views if the viewer is the owner of the profile.
-    if (isOwner) {
+    if (user && !isOwner) {
       trackViewAndNotify();
     }
 
@@ -173,7 +173,6 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
     }
   };
 
-
    const isBadgeActive = (v: Vendor) => {
     if (!v.isVerified || !v.badgeExpirationDate) return false;
     return new Date(v.badgeExpirationDate) > new Date();
@@ -188,21 +187,35 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
     return `https://wa.me/${number}`;
   };
 
+   const handleShare = async () => {
+    const shareData = {
+        title: `View ${localVendor.name} on EliteHub`,
+        text: `Check out ${localVendor.name}, a trusted vendor on EliteHub.`,
+        url: `https://www.elitehubng.com/vendors/${localVendor.id}`,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.url);
+        toast({
+          title: "Link Copied!",
+          description: "Vendor profile URL has been copied to your clipboard.",
+        });
+      }
+    } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          await navigator.clipboard.writeText(shareData.url);
+          toast({ title: "Link Copied!", description: "Sharing was not available, so the link was copied instead." });
+        }
+    }
+  };
+
+
   return (
     <div className="space-y-8">
-      {/* Banner and Profile Header */}
       <Card className="overflow-hidden shadow-lg">
-        <div className="relative h-48 md:h-64 w-full">
-          <Image
-            src={localVendor.bannerImage}
-            alt={`${localVendor.name} banner`}
-            layout="fill"
-            objectFit="cover"
-            data-ai-hint="store banner"
-          />
-          <div className="absolute inset-0 bg-black/40" />
-        </div>
-        <div className="p-6 md:p-8 bg-card relative -mt-20 md:-mt-24">
+        <div className="p-6 md:p-8 bg-card relative">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <Image
               src={localVendor.profileImage}
@@ -296,26 +309,30 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
                 </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t">
-                <Button asChild className="flex-1">
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                <Button asChild>
                     <a href={`tel:${localVendor.phoneNumber}`}>
                         <Phone className="mr-2 h-4 w-4" /> Call Now
                     </a>
                 </Button>
-                <Button asChild variant="secondary" className="flex-1">
-                     <a href={`mailto:${localVendor.email}`}>
+                <a href={`mailto:${localVendor.email}`}>
+                    <Button variant="secondary" className="w-full">
                         <Mail className="mr-2 h-4 w-4" /> Email Vendor
-                    </a>
-                </Button>
+                    </Button>
+                </a>
                 {localVendor.whatsappNumber ? (
-                    <Button asChild className="flex-1 bg-green-600 hover:bg-green-700">
+                    <Button asChild className="bg-green-600 hover:bg-green-700">
                          <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer">
                             <MessageSquare className="mr-2 h-4 w-4" /> WhatsApp
                         </a>
                     </Button>
                 ) : (
-                    null
+                   <div /> 
                 )}
+                 <Button variant="outline" onClick={handleShare}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share Profile
+                </Button>
             </div>
 
         </CardContent>

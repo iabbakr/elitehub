@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ShieldCheck, Star, Heart, Tag, Layers, Building, MessageSquare, Loader2, Palette, XCircle, Truck, Crown, Gem, BadgeCheck, MapPin, Hash, Car, Gauge, GitCommitHorizontal, Droplets, Calendar, Scale, Cpu, MemoryStick, HardDrive, RectangleHorizontal, BatteryFull, Radio, Tv, Speaker, Bluetooth, Weight, Gamepad2, CookingPot, Zap as PowerIcon, Waves, PersonStanding, Atom, Info, Anchor, Leaf, Phone, Mail } from 'lucide-react';
+import { ShieldCheck, Star, Heart, Tag, Layers, Building, MessageSquare, Loader2, Palette, XCircle, Truck, Crown, Gem, BadgeCheck, MapPin, Hash, Car, Gauge, GitCommitHorizontal, Droplets, Calendar, Scale, Cpu, MemoryStick, HardDrive, RectangleHorizontal, BatteryFull, Radio, Tv, Speaker, Bluetooth, Weight, Gamepad2, CookingPot, Zap as PowerIcon, Waves, PersonStanding, Atom, Info, Anchor, Leaf, Phone, Mail, Share2 } from 'lucide-react';
 import { ProductGrid } from '@/components/ProductGrid';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -55,13 +55,13 @@ export function ProductClientPage({ initialProduct, initialVendor, initialRelate
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
   const [currentSlide, setCurrentSlide] = useState(0)
 
-  useEffect(() => {
-    if (!product) return;
+  const isOwner = user && vendor && user.uid === vendor.uid;
 
+  useEffect(() => {
     const trackView = async () => {
-      const viewedKey = `viewed-product-${product.id}`;
+      const viewedKey = `viewed-product-${product!.id}`;
       if (!sessionStorage.getItem(viewedKey)) {
-        const productRef = doc(db, 'products', product.id);
+        const productRef = doc(db, 'products', product!.id);
         try {
           await updateDoc(productRef, { viewCount: increment(1) });
           sessionStorage.setItem(viewedKey, 'true');
@@ -70,8 +70,11 @@ export function ProductClientPage({ initialProduct, initialVendor, initialRelate
         }
       }
     };
-    trackView();
-  }, [product]);
+    
+    if(product && !isOwner) { // Only track views if the user is NOT the owner
+        trackView();
+    }
+  }, [product, isOwner]);
 
   useEffect(() => {
     if (!carouselApi) return;
@@ -89,6 +92,28 @@ export function ProductClientPage({ initialProduct, initialVendor, initialRelate
       </div>
     );
   }
+
+  const handleShare = async () => {
+    const shareData = {
+      title: product.name,
+      text: `Check out this product on EliteHub: ${product.name}`,
+      url: `https://www.elitehubng.com/products/${product.id}`,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.url);
+        toast({ title: "Link Copied!", description: "Product link copied to clipboard." });
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+          await navigator.clipboard.writeText(shareData.url);
+          toast({ title: "Link Copied!", description: "Sharing was not available, so the link was copied instead." });
+      }
+    }
+  };
 
   const handleAddToFavorites = async () => {
     if (!user) {
@@ -487,19 +512,12 @@ export function ProductClientPage({ initialProduct, initialVendor, initialRelate
                 </div>
              ) : (
                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-col sm:flex-row gap-4">
+                     <div className="flex flex-col sm:flex-row gap-4">
                          <Button asChild size="lg" className="flex-1 text-lg py-6">
                              <a href={`tel:${vendor?.phoneNumber}`}>
                                  <Phone className="mr-2 h-6 w-6"/> Call Now
                              </a>
                          </Button>
-                         <Button asChild size="lg" className="flex-1 text-lg py-6">
-                            <a href={`mailto:${vendor?.email}`}>
-                               <Mail className="mr-2 h-6 w-6"/> Email Vendor
-                            </a>
-                        </Button>
-                    </div>
-                     <div className="flex flex-col sm:flex-row gap-4">
                          {vendor?.whatsappNumber ? (
                             <Button asChild size="lg" className="flex-1 text-lg py-6 bg-green-600 hover:bg-green-700">
                                 <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer">
@@ -511,6 +529,12 @@ export function ProductClientPage({ initialProduct, initialVendor, initialRelate
                                 <MessageSquare className="mr-2 h-6 w-6"/> WhatsApp
                             </Button>
                          )}
+                    </div>
+                     <div className="flex flex-col sm:flex-row gap-4">
+                         <Button size="lg" variant="outline" className="flex-1 text-lg py-6" onClick={handleShare}>
+                             <Share2 className="mr-2 h-6 w-6"/>
+                             Share Product
+                         </Button>
                          <Button size="lg" variant="outline" className="flex-1 text-lg py-6" onClick={handleAddToFavorites}>
                              <Heart className="mr-2 h-6 w-6"/>
                              Add to Favorites
