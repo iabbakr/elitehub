@@ -41,6 +41,7 @@ import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { VendorStats } from './VendorStats';
+import { useRouter } from 'next/navigation';
 
 const uploadToCloudinary = async (file: File) => {
   let processedFile = file;
@@ -83,6 +84,7 @@ interface VendorDashboardProps {
 
 export function VendorDashboard({ vendor: initialVendor, products }: VendorDashboardProps) {
     const { toast } = useToast();
+    const router = useRouter();
     const [vendor, setVendor] = useState(initialVendor);
     const [isProfileFormOpen, setIsProfileFormOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -101,6 +103,7 @@ export function VendorDashboard({ vendor: initialVendor, products }: VendorDashb
             await updateDoc(vendorRef, { profileImage: imageUrl });
             setVendor(prev => ({ ...prev, profileImage: imageUrl }));
             toast({ title: 'Image Updated!' });
+            router.refresh();
         } catch (error) {
             console.error("Image upload failed: ", error);
             toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload image. Please try again.' });
@@ -143,9 +146,12 @@ export function VendorDashboard({ vendor: initialVendor, products }: VendorDashb
                 />
                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <label className="cursor-pointer">
-                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleProfileImageUpload(e)} />
-                        <Button variant="outline" asChild>
-                            <span><Upload className="mr-2"/> Change Photo</span>
+                        <input type="file" className="hidden" accept="image/*,.heic,.heif" onChange={(e) => handleProfileImageUpload(e)} disabled={isUploading}/>
+                        <Button variant="outline" asChild disabled={isUploading}>
+                            <span>
+                                {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2"/>}
+                                Change Photo
+                            </span>
                         </Button>
                     </label>
                </div>

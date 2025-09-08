@@ -314,6 +314,7 @@ export default function SubscriptionsPage() {
             badgeExpirationDate: add(new Date(), { months: plan.duration }).toISOString(),
             profileVisibleUntil: add(new Date(), { months: plan.duration }).toISOString(),
             boostedUntil: add(new Date(), { months: plan.duration }).toISOString(),
+            galleryActiveUntil: add(new Date(), { months: plan.duration }).toISOString(),
         };
 
         await updateDoc(providerRef, updates);
@@ -329,6 +330,7 @@ export default function SubscriptionsPage() {
             badgeExpirationDate: add(new Date(), { months: plan.duration }).toISOString(),
             profileVisibleUntil: add(new Date(), { months: plan.duration }).toISOString(),
             boostedUntil: add(new Date(), { months: plan.duration }).toISOString(),
+            galleryActiveUntil: add(new Date(), { months: plan.duration }).toISOString(),
         };
 
         await updateDoc(providerRef, updates);
@@ -344,6 +346,20 @@ export default function SubscriptionsPage() {
             badgeExpirationDate: add(new Date(), { months: plan.duration }).toISOString(),
             profileVisibleUntil: add(new Date(), { months: plan.duration }).toISOString(),
             boostedUntil: add(new Date(), { months: plan.duration }).toISOString(),
+        };
+
+        await updateDoc(providerRef, updates);
+    };
+
+    const handleCurrencyExchangeVipPurchase = async (plan: typeof currencyExchangeVvipPlan) => {
+        if (!profile || profile.id === undefined) return;
+        const providerRef = doc(db, getCollectionName(), profile.id);
+        
+        const updates: Partial<CurrencyExchangeAgent> = {
+            tier: plan.tier,
+            isVerified: true,
+            badgeExpirationDate: add(new Date(), { months: plan.duration }).toISOString(),
+            profileVisibleUntil: add(new Date(), { months: plan.duration }).toISOString(),
         };
 
         await updateDoc(providerRef, updates);
@@ -551,16 +567,17 @@ export default function SubscriptionsPage() {
         </>
     );
 
-    const renderOtherProviderSubscriptions = (title: string, plans: any[]) => (
-         <section>
-            <div className="text-center mb-8"><Eye className="mx-auto h-12 w-12 text-primary" /><h2 className="mt-4 text-3xl font-bold font-headline">{title}</h2></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {plans.map((plan: any) => (
-                    <Card key={plan.title} className="flex flex-col text-center hover:shadow-xl transition-shadow"><CardHeader><CardTitle>{plan.title}</CardTitle></CardHeader><CardContent className="flex-grow flex items-center justify-center"><p className="text-4xl font-bold font-headline text-primary">₦{plan.price.toLocaleString()}</p></CardContent>
+    const renderCurrencyExchangeSubscriptions = () => (
+        <section>
+            <div className="text-center mb-8"><Gem className="mx-auto h-12 w-12 text-primary" /><h2 className="mt-4 text-3xl font-bold font-headline">{currencyExchangeVvipPlan.title}</h2><p className="text-muted-foreground mt-2 max-w-2xl mx-auto">{currencyExchangeVvipPlan.description}</p></div>
+             <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 max-w-2xl mx-auto">
+                <Card key={currencyExchangeVvipPlan.title} className="flex flex-col hover:shadow-2xl transition-shadow border-2 border-primary/20">
+                    <CardHeader className="text-center items-center"><currencyExchangeVvipPlan.icon className="h-10 w-10 text-primary" /><CardTitle className="text-3xl font-headline">{currencyExchangeVvipPlan.title}</CardTitle></CardHeader>
+                    <CardContent className="flex-grow space-y-4"><p className="text-5xl font-bold font-headline text-primary text-center">₦{currencyExchangeVvipPlan.price.toLocaleString()}</p><ul className="space-y-2 text-sm text-muted-foreground pt-4">{currencyExchangeVvipPlan.features.map(feature => (<li key={feature} className="flex items-center gap-3"><CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /><span>{feature}</span></li>))}</ul></CardContent>
                     <CardFooter>
-                        <PaystackButton email={user!.email!} title={plan.title} price={plan.price} onSuccess={(ref) => handlePaymentSuccess(ref, plan.title, plan.price, () => updateDoc(doc(db, getCollectionName(), profile!.id), { profileVisibleUntil: add(new Date(), { months: plan.duration }).toISOString() }))} disabled={isDateActive(profile!.profileVisibleUntil)}>{isDateActive(profile!.profileVisibleUntil) ? 'Active' : 'Purchase'}</PaystackButton>
-                    </CardFooter></Card>
-                ))}
+                        <PaystackButton email={user!.email!} title={currencyExchangeVvipPlan.title} price={currencyExchangeVvipPlan.price} onSuccess={(ref) => handlePaymentSuccess(ref, currencyExchangeVvipPlan.title, currencyExchangeVvipPlan.price, () => handleCurrencyExchangeVipPurchase(currencyExchangeVvipPlan))} size="lg" disabled={profile!.tier === currencyExchangeVvipPlan.tier}>{profile!.tier === currencyExchangeVvipPlan.tier ? 'Current Plan' : 'Purchase Plan'}</PaystackButton>
+                    </CardFooter>
+                </Card>
             </div>
         </section>
     );
@@ -573,7 +590,7 @@ export default function SubscriptionsPage() {
             case 'lawyer': return renderLawyerSubscriptions();
             case 'logistics': return renderLogisticsSubscriptions();
             case 'service': return renderServiceSubscriptions();
-            case 'currency-exchange': return renderOtherProviderSubscriptions('Currency Exchange Plans', [currencyExchangeVvipPlan]);
+            case 'currency-exchange': return renderCurrencyExchangeSubscriptions();
             default: return <p>No subscriptions available for your provider type.</p>;
         }
     }

@@ -25,14 +25,21 @@ import {
   MessageSquare,
   Share2,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, increment, runTransaction, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, runTransaction, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { ViewToggle, type ViewMode } from '@/components/ViewToggle';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface PublicVendorProfileProps {
   vendor: Vendor;
@@ -49,6 +56,7 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
   const [localVendor, setLocalVendor] = useState<Vendor>(vendor);
   const [hoverRating, setHoverRating] = useState(0);
   const [hasRated, setHasRated] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const isOwner = user && vendor.uid && user.uid === vendor.uid;
 
    useEffect(() => {
@@ -110,6 +118,11 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
             description: 'You must be logged in to rate a vendor.',
         });
         router.push('/login');
+        return;
+    }
+
+     if (isOwner) {
+        toast({ title: 'Action Not Allowed', description: 'You cannot rate your own profile.' });
         return;
     }
 
@@ -177,6 +190,8 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
     if (!v.isVerified || !v.badgeExpirationDate) return false;
     return new Date(v.badgeExpirationDate) > new Date();
   };
+  
+  const canRate = !isOwner && !hasRated;
 
   const getWhatsAppLink = () => {
     if (!localVendor?.whatsappNumber) return '';
@@ -189,32 +204,30 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
 
    const handleShare = async () => {
     const shareData = {
-        title: `View ${localVendor.name} on EliteHub`,
-        text: `Check out ${localVendor.name}, a trusted vendor on EliteHub.`,
-        url: `https://www.elitehubng.com/vendors/${localVendor.id}`,
+      title: `View ${localVendor.name} on EliteHub`,
+      text: `Check out ${localVendor.name}, a trusted vendor on EliteHub.`,
+      url: `https://www.elitehubng.com/vendors/${localVendor.id}`,
     };
     try {
       if (navigator.share) {
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(shareData.url);
-        toast({
-          title: "Link Copied!",
-          description: "Vendor profile URL has been copied to your clipboard.",
-        });
+        toast({ title: "Link Copied!", description: "Vendor profile URL has been copied to your clipboard." });
       }
     } catch (err: any) {
-        if (err.name !== 'AbortError') {
+       if (err.name !== 'AbortError') {
           await navigator.clipboard.writeText(shareData.url);
           toast({ title: "Link Copied!", description: "Sharing was not available, so the link was copied instead." });
         }
     }
   };
 
+  const activeProducts = useMemo(() => products.filter(p => p.status === 'active'), [products]);
+
 
   return (
     <div className="space-y-8">
-      {/* Banner and Profile Header */}
       <Card className="overflow-hidden shadow-lg">
         <div className="p-6 md:p-8 bg-card relative">
           <div className="flex flex-col md:flex-row items-center gap-6">
@@ -242,19 +255,19 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
               <div className="flex items-center justify-center md:justify-start gap-3">
                  <div
                     className="flex items-center justify-center md:justify-start gap-1 text-yellow-500 mt-2"
-                    onMouseLeave={() => setHoverRating(0)}
-                    title={hasRated ? "You have already rated this vendor" : "Click to rate"}
+                    onMouseLeave={() => canRate && setHoverRating(0)}
+                    title={isOwner ? "You cannot rate your own profile" : (hasRated ? "You have already rated this vendor" : "Click to rate")}
                  >
                     {[...Array(5)].map((_, i) => (
                     <Star
                         key={i}
                         className={cn(
                             'h-6 w-6',
-                            !hasRated && 'cursor-pointer transition-transform hover:scale-125',
+                            canRate && 'cursor-pointer transition-transform hover:scale-125',
                             (hoverRating || Math.round(localVendor.rating)) > i ? 'fill-current' : 'text-gray-300'
                         )}
-                        onMouseEnter={() => !hasRated && setHoverRating(i + 1)}
-                        onClick={() => handleRatingSubmit(i + 1)}
+                        onMouseEnter={() => canRate && setHoverRating(i + 1)}
+                        onClick={() => canRate && handleRatingSubmit(i + 1)}
                     />
                     ))}
                     <span className="ml-2 text-sm text-muted-foreground">
@@ -340,14 +353,15 @@ export function PublicVendorProfile({ vendor, products }: PublicVendorProfilePro
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Products from {localVendor.name}</CardTitle>
+          <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
         </CardHeader>
         <CardContent>
-          {products.length > 0 ? (
-            <ProductGrid products={products} vendors={[vendor]} />
+          {activeProducts.length > 0 ? (
+            <ProductGrid products={activeProducts} vendors={[vendor]} viewMode={viewMode} />
           ) : (
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-center py-8">
               This vendor has not listed any products yet.
             </p>
           )}

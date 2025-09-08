@@ -80,6 +80,11 @@ export function CompanyProfileClientPage({ initialCompany }: { initialCompany: L
         router.push('/login');
         return;
     }
+    
+    if (isOwner) {
+        toast({ title: 'Action Not Allowed', description: 'You cannot rate your own profile.' });
+        return;
+    }
 
     if (hasRated) {
         toast({ title: 'Already Rated', description: 'You have already submitted a rating for this company.' });
@@ -230,6 +235,7 @@ export function CompanyProfileClientPage({ initialCompany }: { initialCompany: L
             await updateDoc(companyRef, { profileImage: imageUrl });
             setCompany(prev => prev ? { ...prev, profileImage: imageUrl } : null);
             toast({ title: 'Profile Picture Updated!' });
+            router.refresh();
         } catch (error) {
             console.error("Profile picture upload failed: ", error);
             toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload image. Please try again.' });
@@ -251,6 +257,7 @@ export function CompanyProfileClientPage({ initialCompany }: { initialCompany: L
   const ContactIcon = company.whatsappNumber ? MessageCircle : Phone;
   const isProfileActive = company.profileVisibleUntil && new Date(company.profileVisibleUntil) > new Date();
   const canViewGallery = company.tier === 'vip' || company.tier === 'vvip';
+  const canRate = !isOwner && !hasRated;
 
 
   return (
@@ -297,9 +304,12 @@ export function CompanyProfileClientPage({ initialCompany }: { initialCompany: L
                         </div>
                     )}
                  </div>
-                 <div className="flex items-center justify-center md:justify-start gap-1 text-yellow-500 mt-2" onMouseLeave={() => setHoverRating(0)} title={hasRated ? "You have already rated this company" : "Click to rate"} >
+                 <div className="flex items-center justify-center md:justify-start gap-1 text-yellow-500 mt-2" 
+                    onMouseLeave={() => canRate && setHoverRating(0)}
+                    title={isOwner ? "You cannot rate your own profile" : (hasRated ? "You have already rated this company" : "Click to rate")}
+                 >
                     {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={cn('h-6 w-6', !hasRated && 'cursor-pointer transition-transform hover:scale-125', (hoverRating || Math.round(company.rating || 0)) > i ? 'fill-current' : 'text-gray-300')} onMouseEnter={() => !hasRated && setHoverRating(i + 1)} onClick={() => handleRatingSubmit(i + 1)} />
+                    <Star key={i} className={cn('h-6 w-6', canRate && 'cursor-pointer transition-transform hover:scale-125', (hoverRating || Math.round(company.rating || 0)) > i ? 'fill-current' : 'text-gray-300')} onMouseEnter={() => canRate && setHoverRating(i + 1)} onClick={() => canRate && handleRatingSubmit(i + 1)} />
                     ))}
                     <span className="ml-2 text-sm text-muted-foreground">({(company.rating || 0).toFixed(1)} from {company.ratingCount || 0} ratings)</span>
                 </div>

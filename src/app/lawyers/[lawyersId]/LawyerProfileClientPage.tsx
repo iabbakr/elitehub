@@ -156,6 +156,7 @@ export function LawyerProfileClientPage({ initialLawyer }: { initialLawyer: Lawy
         await updateDoc(lawyerRef, { profileImage: imageUrl });
         setLawyer(prev => prev ? { ...prev, profileImage: imageUrl } : null);
         toast({ title: 'Profile Picture Updated!' });
+        router.refresh();
     } catch (error) {
         console.error("Profile picture upload failed: ", error);
         toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload image. Please try again.' });

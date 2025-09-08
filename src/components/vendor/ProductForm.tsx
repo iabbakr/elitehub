@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -228,13 +229,13 @@ const productFormSchema = z.object({
 });
 
 const uploadToCloudinary = async (file: File) => {
+    const heic2any = (await import('heic2any')).default;
     let processedFile = file;
     const fileName = file.name.toLowerCase();
 
     // Check if the file is HEIC/HEIF and convert it
     if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
         try {
-            const heic2any = (await import('heic2any')).default;
             const convertedBlob = await heic2any({
                 blob: file,
                 toType: "image/jpeg",
@@ -408,7 +409,7 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
     if (!editingProduct) {
         const productsInCategory = existingProducts.filter(p => p.category === values.category).length;
         const isFreePostUsed = productsInCategory > 0;
-        const hasPaidPostSlots = vendor.postLimit === -1 || vendor.postCount < vendor.postLimit;
+        const hasPaidPostSlots = vendor.postLimit === -1 || (vendor.postCount < vendor.postLimit);
 
         if (isFreePostUsed && !hasPaidPostSlots) {
              toast({
@@ -511,16 +512,24 @@ export function ProductForm({ vendor, existingProducts, editingProduct, onSucces
                 const currentVendor = currentVendorDoc.data() as Vendor;
                 
                 const productsInCategory = existingProducts.filter(p => p.category === values.category).length;
-                const isPaidPost = productsInCategory > 0;
+                const isFreePostUsed = productsInCategory > 0;
+                 const canPost = currentVendor.postLimit === -1 || !isFreePostUsed || (currentVendor.postCount < currentVendor.postLimit);
+                 if (!canPost) {
+                     throw new Error("Post limit reached.");
+                 }
 
                 // Now perform all writes
                 const newProductRef = doc(productCollectionRef);
                 newProductId = newProductRef.id;
                 
-                transaction.set(newProductRef, { ...productData, createdAt: serverTimestamp() });
+                // If the product being added is part of a VIP/VVIP subscription that includes boosts, apply the boost
+                const boostUntil = vendor.tier === 'vip' || vendor.tier === 'vvip' ? vendor.badgeExpirationDate : null;
+                const finalProductData = { ...productData, createdAt: serverTimestamp(), boostedUntil: boostUntil };
+
+                transaction.set(newProductRef, finalProductData);
 
                 // Only increment post count if it's a paid post and the vendor doesn't have unlimited posts
-                if(isPaidPost && currentVendor.postLimit !== -1) {
+                if(isFreePostUsed && currentVendor.postLimit !== -1) {
                     transaction.update(vendorRef, { postCount: increment(1) });
                 }
              });

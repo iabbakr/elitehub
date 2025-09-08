@@ -47,6 +47,11 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
         router.push('/login');
         return;
     }
+    
+    if(isOwner) {
+        toast({ title: 'Action Not Allowed', description: 'You cannot rate your own profile.' });
+        return;
+    }
 
     if (hasRated) {
         toast({
@@ -135,6 +140,7 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
             await updateDoc(agentRef, { profileImage: imageUrl });
             setAgent(prev => prev ? { ...prev, profileImage: imageUrl } : prev);
             toast({ title: 'Profile Picture Updated!' });
+            router.refresh();
         } catch (error) {
             console.error("Profile picture upload failed: ", error);
             toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload image. Please try again.' });
@@ -151,7 +157,8 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
       </div>
     );
   }
-
+  
+  const canRate = !isOwner && !hasRated;
   const isProfileActive = agent.profileVisibleUntil && new Date(agent.profileVisibleUntil) > new Date();
 
 
@@ -235,19 +242,19 @@ export function AgentProfileClientPage({ initialAgent }: { initialAgent: Currenc
                  </div>
                  <div
                     className="flex items-center justify-center md:justify-start gap-1 text-yellow-500 mt-2"
-                    onMouseLeave={() => setHoverRating(0)}
-                    title={hasRated ? "You have already rated this agent" : "Click to rate"}
+                    onMouseLeave={() => canRate && setHoverRating(0)}
+                    title={isOwner ? "You cannot rate your own profile" : (hasRated ? "You have already rated this agent" : "Click to rate")}
                  >
                     {[...Array(5)].map((_, i) => (
                     <Star
                         key={i}
                         className={cn(
                             'h-6 w-6',
-                            !hasRated && 'cursor-pointer transition-transform hover:scale-125',
+                            canRate && 'cursor-pointer transition-transform hover:scale-125',
                             (hoverRating || Math.round(agent.rating || 0)) > i ? 'fill-current' : 'text-gray-300'
                         )}
-                        onMouseEnter={() => !hasRated && setHoverRating(i + 1)}
-                        onClick={() => handleRatingSubmit(i + 1)}
+                        onMouseEnter={() => canRate && setHoverRating(i + 1)}
+                        onClick={() => canRate && handleRatingSubmit(i + 1)}
                     />
                     ))}
                     <span className="ml-2 text-sm text-muted-foreground">
